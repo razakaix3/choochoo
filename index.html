@@ -1,0 +1,3135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Choo Choo!</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Choo Choo">
+<meta name="theme-color" content="#c68a52">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root{
+  --shelf:#c68a52; --shelf-edge:#9c6534; --shelf-grain:rgba(90,50,20,.18);
+  --b1:#e63946; --b2:#ffbe0b; --b3:#3a86ff; --b4:#2a9d8f; --b5:#8338ec; --b6:#fb8500;
+  --btn-edge:rgba(0,0,0,.28);
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  background:var(--shelf);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --shelf:#8a5a33; --shelf-edge:#5e3a1e; --shelf-grain:rgba(0,0,0,.22); }
+}
+:root[data-theme="dark"]{ --shelf:#8a5a33; --shelf-edge:#5e3a1e; --shelf-grain:rgba(0,0,0,.22); }
+html{ scroll-padding-top:env(safe-area-inset-top,0px); height:100%; }
+body{
+  height:100%; margin:0; overflow:hidden; background:var(--shelf);
+  touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+  overscroll-behavior:none; -webkit-tap-highlight-color:transparent;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+#app{ height:100%; display:flex; flex-direction:column; }
+#stage{ flex:1; position:relative; min-height:0; background:#8acb68; }
+#c{ position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+#bar{
+  flex:none; display:flex; justify-content:center; align-items:center;
+  gap:clamp(6px,2.4vw,24px); padding:12px 8px 14px;
+  background:
+    repeating-linear-gradient(92deg, transparent 0 22px, var(--shelf-grain) 22px 24px, transparent 24px 61px),
+    var(--shelf);
+  border-top:5px solid var(--shelf-edge);
+}
+.btn{
+  position:relative; flex:none;
+  width:clamp(46px,13.4vw,84px); height:clamp(46px,13.4vw,84px);
+  border-radius:50%; border:none; padding:0; margin:0; cursor:pointer;
+  font-size:clamp(22px,6.6vw,40px); line-height:1;
+  display:grid; place-items:center;
+  box-shadow:inset 0 -6px 0 var(--btn-edge), inset 0 5px 0 rgba(255,255,255,.35), 0 5px 0 var(--shelf-edge);
+  transition:transform .08s ease, box-shadow .08s ease;
+}
+.btn:focus-visible{ outline:4px solid #fff; outline-offset:3px; }
+.btn.pressed{ transform:translateY(4px); box-shadow:inset 0 -3px 0 var(--btn-edge), inset 0 3px 0 rgba(255,255,255,.3), 0 1px 0 var(--shelf-edge); }
+.btn.shake{ animation:shake .35s ease; }
+@keyframes shake{ 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(3px)} }
+#bAdd{ background:var(--b1); } #bRemove{ background:var(--b6); } #bHorn{ background:var(--b2); }
+#bLight{ background:var(--b4); } #bSpeed{ background:var(--b3); } #bSky{ background:var(--b5); }
+.plus{
+  position:absolute; top:-2px; right:-2px; width:36%; height:36%; border-radius:50%;
+  background:#fff; color:var(--b1); font-weight:900; font-size:clamp(15px,4vw,24px);
+  display:grid; place-items:center; box-shadow:0 2px 0 rgba(0,0,0,.25);
+}
+.plus.minus{ color:var(--b6); }
+.tl{ width:38%; height:74%; background:#262626; border-radius:12px; display:flex; flex-direction:column; justify-content:space-evenly; align-items:center; box-shadow:0 2px 0 rgba(0,0,0,.3); }
+.tl i{ display:block; width:68%; aspect-ratio:1; border-radius:50%; background:#4a2020; transition:background .15s, box-shadow .15s; }
+.tl i.g{ background:#1f3d24; }
+.tl.stop i.r{ background:#ff3b3b; box-shadow:0 0 10px #ff5a5a; }
+.tl.go i.g{ background:#3ee06a; box-shadow:0 0 10px #5dff88; }
+#parent{ position:absolute; top:6px; right:6px; display:flex; gap:6px; z-index:2; }
+.pbtn{
+  width:36px; height:36px; border-radius:10px; border:none; cursor:pointer; padding:0;
+  background:rgba(255,255,255,.5); font-size:18px; opacity:.55; display:grid; place-items:center;
+}
+.pbtn:focus-visible{ outline:3px solid #fff; opacity:1; }
+.pbtn.hold{ opacity:1; transform:scale(1.25); transition:opacity .2s, transform 1.2s linear; }
+.pbtn[hidden]{ display:none; }
+#bBed{ width:auto; min-width:36px; padding:0 5px; font-size:14px; }
+/* bedtime: the sleepy cover over the whole game (the parent corner stays on top of it) */
+#sleep{ position:fixed; inset:0; z-index:1; display:none; opacity:0; transition:opacity 3s ease; overflow:hidden; touch-action:none;
+  background:radial-gradient(circle at 50% 44%, rgba(34,46,110,.78), rgba(8,12,40,.94) 75%); }
+#sleep.show{ display:block; }
+#sleep.on{ opacity:1; }
+#sleep .moon{ position:absolute; left:50%; top:44%; font-size:min(30vw,30vh); line-height:1; transform:translate(-50%,-50%);
+  animation:sway 7s ease-in-out infinite; filter:drop-shadow(0 0 24px rgba(255,236,160,.55)); }
+#sleep .zz{ position:absolute; left:58%; top:30%; font-size:min(10vw,10vh); line-height:1; animation:zz 4.5s ease-in infinite; }
+#sleep i{ position:absolute; width:5px; height:5px; border-radius:50%; background:#fff6c8; box-shadow:0 0 6px #fff6c8; animation:tw 3.2s ease-in-out infinite; }
+@keyframes tw{ 0%,100%{ opacity:.15 } 50%{ opacity:1 } }
+@keyframes zz{ 0%{ transform:translate(0,30px) scale(.6); opacity:0 } 25%{ opacity:1 } 100%{ transform:translate(50px,-70px) scale(1.15); opacity:0 } }
+@keyframes sway{ 0%,100%{ transform:translate(-50%,-50%) rotate(-5deg) } 50%{ transform:translate(-50%,-53%) rotate(5deg) } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="c" aria-label="Toy town with a train set, a road full of vehicles and a building site. Tap things to make them go."></canvas>
+    <div id="parent">
+      <button class="pbtn" id="bReset" aria-label="Put everything back to the start (press and hold)">🔄</button>
+      <button class="pbtn" id="bBed" aria-label="Play timer: press and hold to change it, or to wake up">⏰10</button>
+      <button class="pbtn" id="bBell" aria-label="Crossing bell on or off">🔔</button>
+      <button class="pbtn" id="bMute" aria-label="All sound on or off">🔊</button>
+      <button class="pbtn" id="bFull" aria-label="Full screen" hidden>⛶</button>
+    </div>
+  </div>
+  <div id="bar">
+    <button class="btn" id="bAdd" aria-label="Add a train">🚂<span class="plus">+</span></button>
+    <button class="btn" id="bRemove" aria-label="Remove a train">🚂<span class="plus minus">−</span></button>
+    <button class="btn" id="bHorn" aria-label="Toot all the trains">📯</button>
+    <button class="btn" id="bLight" aria-label="Stop and go"><span class="tl go"><i class="r"></i><i class="g"></i></span></button>
+    <button class="btn" id="bSpeed" aria-label="Slow or fast">🐢</button>
+    <button class="btn" id="bSky" aria-label="Day or night">🌙</button>
+  </div>
+</div>
+<div id="sleep" aria-hidden="true"><i style="left:61.6%;top:67.5%;animation-delay:2.54s"></i><i style="left:91.6%;top:67.4%;animation-delay:2.95s"></i><i style="left:5.7%;top:43.5%;animation-delay:3.02s"></i><i style="left:64.0%;top:81.4%;animation-delay:0.36s"></i><i style="left:47.1%;top:24.5%;animation-delay:1.74s"></i><i style="left:57.0%;top:4.1%;animation-delay:0.69s"></i><i style="left:29.3%;top:82.7%;animation-delay:2.45s"></i><i style="left:18.0%;top:72.4%;animation-delay:0.44s"></i><i style="left:61.0%;top:14.0%;animation-delay:0.01s"></i><i style="left:84.9%;top:21.2%;animation-delay:0.69s"></i><i style="left:95.3%;top:78.9%;animation-delay:0.93s"></i><i style="left:93.4%;top:49.9%;animation-delay:2.17s"></i><i style="left:22.2%;top:84.9%;animation-delay:2.21s"></i><i style="left:93.9%;top:80.8%;animation-delay:0.96s"></i><i style="left:37.0%;top:17.4%;animation-delay:0.47s"></i><i style="left:9.1%;top:29.2%;animation-delay:1.93s"></i><i style="left:3.3%;top:62.0%;animation-delay:1.08s"></i><i style="left:32.1%;top:74.2%;animation-delay:1.54s"></i><i style="left:32.7%;top:44.9%;animation-delay:2.25s"></i><i style="left:8.4%;top:87.8%;animation-delay:0.07s"></i><i style="left:73.5%;top:76.5%;animation-delay:0.06s"></i><i style="left:77.0%;top:34.9%;animation-delay:1.85s"></i><i style="left:3.9%;top:7.1%;animation-delay:0.58s"></i><i style="left:92.8%;top:20.1%;animation-delay:2.42s"></i><div class="moon">🌙</div><div class="zz">💤</div></div>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const stage = $('stage'), cv = $('c'), ctx = cv.getContext('2d');
+const bg = document.createElement('canvas'), bctx = bg.getContext('2d');
+let W = 0, H = 0, DPR = 1, U = 1, NOW = 0;
+
+const TAU = Math.PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = k => 0.5 - 0.5 * Math.cos(Math.PI * clamp(k, 0, 1));
+const angDiff = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
+const lerpAng = (a, b, k) => a + angDiff(b, a) * k;
+const EF = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+function mulberry(seed){ return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shade(hex, p){
+  const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = n >> 8 & 255, b = n & 255;
+  const t = p < 0 ? 0 : 255, a = Math.abs(p);
+  r = Math.round((t - r) * a + r); g = Math.round((t - g) * a + g); b = Math.round((t - b) * a + b);
+  return `rgb(${r},${g},${b})`;
+}
+function rr(c, x, y, w, h, r){
+  if (w < 0){ x += w; w = -w; } if (h < 0){ y += h; h = -h; }
+  r = Math.max(0, Math.min(r, w / 2, h / 2));
+  c.beginPath(); c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function circle(c, x, y, r){ c.beginPath(); c.arc(x, y, Math.max(0, r), 0, TAU); }
+
+const ENGINE_COLORS = ['#e63946','#3a86ff','#ffbe0b','#2a9d8f','#8338ec','#fb8500','#ff5d8f'];
+const WAGON_COLORS = ['#ffadad','#ffd6a5','#fdffb6','#caffbf','#9bf6ff','#a0c4ff','#bdb2ff','#ffc6ff'];
+const ANIMALS = ['🐶','🐱','🐻','🐰','🐷','🐸','🐵','🐮','🦁','🐯','🐼','🐨','🐔','🐧','🦊','🐭'];
+const FLOWERS = ['🌷','🌼','🌻','🌸','🌺'];
+const CAR_COLORS = ['#e63946','#3a86ff','#ffbe0b','#2a9d8f','#fb8500','#8338ec','#f15bb5','#f4f4f4'];
+const TOY = ['#e63946','#ffbe0b','#3a86ff','#2a9d8f','#fb8500','#8338ec'];
+
+/* ================= sound ================= */
+let AC = null, muted = false, bellMuted = false, noiseBuf = null;
+function audio(){
+  if (muted) return null;
+  try {
+    if (!AC){ const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; AC = new C(); }
+    if (AC.state === 'suspended') AC.resume();
+  } catch (e) { return null; }
+  return AC;
+}
+function noise(a){
+  if (!noiseBuf){ noiseBuf = a.createBuffer(1, a.sampleRate, a.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  const s = a.createBufferSource(); s.buffer = noiseBuf; return s;
+}
+function envGain(a, t, peak, att, dec, dest){
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + att);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + att + dec);
+  g.connect(dest || a.destination); return g;
+}
+function tone(freq, type, delay, att, dec, peak, endFreq){
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + delay, g = envGain(a, t, peak, att, dec);
+  const o = a.createOscillator(); o.type = type;
+  o.frequency.setValueAtTime(freq, t);
+  if (endFreq) o.frequency.exponentialRampToValueAtTime(endFreq, t + att + dec);
+  o.connect(g); o.start(t); o.stop(t + att + dec + 0.05);
+}
+function sustained(freqs, type, dur, peak, cutoff, delay){
+  const a = audio(); if (!a) return;
+  const t = a.currentTime + (delay || 0);
+  const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = cutoff;
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.03);
+  g.gain.setValueAtTime(peak, t + dur - 0.08); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  lp.connect(g); g.connect(a.destination);
+  for (const f of freqs){ const o = a.createOscillator(); o.type = type; o.frequency.value = f; o.connect(lp); o.start(t); o.stop(t + dur + 0.02); }
+}
+function sToot(pitch){
+  const a = audio(); if (!a) return;
+  const t = a.currentTime;
+  const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1500;
+  const g = a.createGain(), P = 0.075;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(P, t + 0.04); g.gain.setValueAtTime(P, t + 0.2);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+  g.gain.exponentialRampToValueAtTime(P, t + 0.34); g.gain.setValueAtTime(P, t + 0.72);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.98);
+  lp.connect(g); g.connect(a.destination);
+  [370, 466, 554].forEach(f => {
+    f *= pitch;
+    const o = a.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(f * 0.94, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.06);
+    const v = a.createOscillator(); v.frequency.value = 6;
+    const vg = a.createGain(); vg.gain.value = f * 0.006;
+    v.connect(vg); vg.connect(o.frequency); o.connect(lp);
+    o.start(t); v.start(t); o.stop(t + 1.02); v.stop(t + 1.02);
+  });
+}
+const sPop = () => tone(480, 'sine', 0, 0.01, 0.16, 0.22, 1150);
+const sDing = () => { tone(784, 'sine', 0, 0.01, 0.9, 0.14); tone(1568, 'sine', 0, 0.01, 0.4, 0.03); tone(622, 'sine', 0.36, 0.01, 1.1, 0.14); tone(1244, 'sine', 0.36, 0.01, 0.4, 0.03); };
+const sBloop = () => tone(420, 'sine', 0, 0.01, 0.28, 0.25, 140);
+const sClick = () => tone(900, 'square', 0, 0.004, 0.05, 0.05);
+const sNo = () => { tone(220, 'triangle', 0, 0.01, 0.18, 0.2, 180); tone(180, 'triangle', 0.2, 0.01, 0.25, 0.2, 140); };
+const sAdd = () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 'triangle', i * 0.08, 0.01, 0.25, 0.15));
+const sBye = () => [784, 659, 523, 392].forEach((f, i) => tone(f, 'triangle', i * 0.07, 0.01, 0.22, 0.14));
+const sBoing = () => tone(260, 'sine', 0, 0.01, 0.35, 0.25, 700);
+const sKnock = () => { tone(170, 'sine', 0, 0.004, 0.12, 0.45, 90); tone(170, 'sine', 0.2, 0.004, 0.12, 0.45, 90); };
+const sFast = () => tone(300, 'triangle', 0, 0.01, 0.3, 0.18, 1200);
+const sSlow = () => tone(900, 'triangle', 0, 0.01, 0.45, 0.18, 220);
+const sNight = () => [784, 659, 523, 392].forEach((f, i) => tone(f, 'sine', i * 0.13, 0.02, 0.6, 0.12));
+const sDay = () => [392, 523, 659, 784].forEach((f, i) => tone(f, 'sine', i * 0.1, 0.02, 0.5, 0.12));
+const sBeep = () => { tone(520, 'square', 0, 0.01, 0.12, 0.07); tone(520, 'square', 0.2, 0.01, 0.16, 0.07); };
+const sHonk = () => sustained([196, 247], 'sawtooth', 0.55, 0.09, 900);
+const sPutt = () => { for (let i = 0; i < 7; i++) tone(75, 'square', i * 0.1, 0.005, 0.07, 0.12); };
+const sReverse = () => { for (let i = 0; i < 3; i++) sustained([1050], 'square', 0.18, 0.035, 3000, i * 0.36); };
+const sHello = () => { tone(660, 'sine', 0, 0.01, 0.2, 0.15); tone(880, 'sine', 0.14, 0.01, 0.3, 0.15); };
+const sBlock = () => tone(330, 'triangle', 0, 0.005, 0.16, 0.22, 200);
+const sClank = () => { tone(180, 'square', 0, 0.003, 0.08, 0.06); tone(820, 'triangle', 0, 0.003, 0.35, 0.06); };
+const sCheer = () => [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, 'triangle', i * 0.09, 0.01, 0.3, 0.14));
+let bellHi = false;
+const sBell = () => { if (bellMuted) return; bellHi = !bellHi; tone(bellHi ? 1320 : 1180, 'sine', 0, 0.004, 0.25, 0.035); };
+function sSiren(kind){
+  const a = audio(); if (!a) return;
+  const t = a.currentTime, o = a.createOscillator(), g = a.createGain(), lp = a.createBiquadFilter();
+  o.type = 'triangle'; lp.type = 'lowpass'; lp.frequency.value = 2200;
+  if (kind === 'fire'){ for (let i = 0; i < 6; i++) o.frequency.setValueAtTime(i % 2 ? 440 : 587, t + i * 0.45); }
+  else if (kind === 'ambulance'){ for (let i = 0; i < 8; i++) o.frequency.setValueAtTime(i % 2 ? 660 : 880, t + i * 0.33); } // quicker two-tone
+  else { o.frequency.setValueAtTime(650, t); for (let i = 0; i < 3; i++){ o.frequency.linearRampToValueAtTime(1300, t + i * 0.9 + 0.45); o.frequency.linearRampToValueAtTime(650, t + i * 0.9 + 0.9); } }
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.06, t + 0.05);
+  g.gain.setValueAtTime(0.06, t + 2.55); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.7);
+  o.connect(lp); lp.connect(g); g.connect(a.destination); o.start(t); o.stop(t + 2.75);
+}
+function sNoise(type, freq, dur, peak){
+  const a = audio(); if (!a) return;
+  const t = a.currentTime, s = noise(a), f = a.createBiquadFilter(); f.type = type; f.frequency.value = freq;
+  const g = envGain(a, t, peak, 0.04, dur); s.connect(f); f.connect(g); s.start(t); s.stop(t + dur + 0.1);
+}
+const sRustle = () => sNoise('highpass', 2500, 0.35, 0.12);
+const sRumble = () => { sNoise('lowpass', 220, 0.8, 0.45); tone(55, 'sawtooth', 0, 0.05, 0.7, 0.06); };
+const sTip = () => sNoise('lowpass', 700, 1.3, 0.18);
+const sScoop = () => sNoise('lowpass', 500, 0.5, 0.22);
+const sDump = () => sNoise('lowpass', 700, 0.6, 0.16);
+const sHum = f => tone(f, 'triangle', 0, 0.01, 0.12, 0.05, f * 1.06);
+const sChug = () => tone(70, 'square', 0, 0.004, 0.06, 0.06);
+const sBackUp = () => sustained([1050], 'square', 0.2, 0.03, 3000);
+const sBonk = () => tone(130, 'sine', 0, 0.005, 0.14, 0.2, 90);
+const sPour = () => { sNoise('lowpass', 420, 2.2, 0.2); tone(90, 'sawtooth', 0, 0.1, 1.8, 0.04, 70); };
+const sSpray = () => sNoise('highpass', 1800, 1.6, 0.09);
+const sBubbles = () => { for (let i = 0; i < 7; i++){ const f = rand(700, 1500); tone(f, 'sine', i * 0.07 + rand(0, 0.03), 0.005, 0.08, 0.06, f * 1.5); } };
+// the robber: a tiptoeing tune when he turns up, a cheeky giggle, the police car's "whoop" when it catches him,
+// the coins flying out of his bag and a car door shutting
+const sSneak = () => { [165, 208, 247, 262, 0, 247, 233, 220].forEach((f, i) => f && tone(f, 'triangle', i * 0.16, 0.005, 0.12, 0.22)); tone(1319, 'sine', 1.35, 0.005, 0.25, 0.07); };
+const sGiggle = () => { for (let i = 0; i < 3; i++) tone(880 - i * 60, 'triangle', i * 0.13, 0.01, 0.09, 0.12, 1180 - i * 60); };
+const sWhoop = () => { tone(380, 'triangle', 0, 0.02, 0.45, 0.14, 1400); tone(380, 'triangle', 0.5, 0.02, 0.45, 0.14, 1400); };
+const sCoins = () => [1568, 2093, 1760, 2349, 1976, 2637].forEach((f, i) => tone(f, 'sine', i * 0.07, 0.003, 0.25, 0.07));
+const sClunk = () => tone(150, 'sine', 0, 0.004, 0.16, 0.4, 85);
+const sColour = k => tone([523, 587, 659, 784, 880, 988, 1047][k + 1], 'triangle', 0, 0.01, 0.3, 0.18);
+function sQuack(){
+  const a = audio(); if (!a) return;
+  [0, 0.19].forEach(d => {
+    const t = a.currentTime + d;
+    const bp = a.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1100; bp.Q.value = 2.5;
+    const g = envGain(a, t, 0.4, 0.01, 0.13); bp.connect(g);
+    const o = a.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(430, t); o.frequency.exponentialRampToValueAtTime(250, t + 0.14);
+    o.connect(bp); o.start(t); o.stop(t + 0.2);
+  });
+}
+
+/* ================= paths ================= */
+function makePath(pts, closed){
+  const n = pts.length, cum = [0];
+  for (let i = 1; i < n; i++) cum[i] = cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  const total = Math.max(1e-3, closed ? cum[n - 1] + Math.hypot(pts[0][0] - pts[n - 1][0], pts[0][1] - pts[n - 1][1]) : cum[n - 1]);
+  const N = Math.max(closed ? 60 : 2, Math.round(total / 2)), M = closed ? N : N + 1;
+  const X = new Float32Array(M), Y = new Float32Array(M);
+  let j = 0;
+  for (let i = 0; i < M; i++){
+    const s = i * total / N;
+    while (j < n - 1 && cum[j + 1] < s) j++;
+    const a = pts[j], b = j < n - 1 ? pts[j + 1] : pts[closed ? 0 : j];
+    const seg = (j < n - 1 ? cum[j + 1] : total) - cum[j];
+    const t = seg > 0 ? Math.min(1, (s - cum[j]) / seg) : 0;
+    X[i] = a[0] + (b[0] - a[0]) * t; Y[i] = a[1] + (b[1] - a[1]) * t;
+  }
+  return { X, Y, N: M, L: total, STEP: total / N, closed };
+}
+function pAt(P, s){
+  let i, j, t;
+  if (P.closed){
+    s = ((s % P.L) + P.L) % P.L;
+    const f = s / P.STEP; i = Math.floor(f) % P.N; j = (i + 1) % P.N; t = f - Math.floor(f);
+  } else {
+    s = clamp(s, 0, P.L);
+    const f = s / P.STEP; i = Math.floor(f); t = f - i;
+    if (i >= P.N - 1){ i = P.N - 2; t = 1; }
+    j = i + 1;
+  }
+  return { x: P.X[i] + (P.X[j] - P.X[i]) * t, y: P.Y[i] + (P.Y[j] - P.Y[i]) * t, a: Math.atan2(P.Y[j] - P.Y[i], P.X[j] - P.X[i]) };
+}
+function pMinD2(P, x, y, stride){
+  let bd = 1e18;
+  for (let i = 0; i < P.N; i += stride || 1){ const dx = P.X[i] - x, dy = P.Y[i] - y, d = dx * dx + dy * dy; if (d < bd) bd = d; }
+  return bd;
+}
+function pNearestS(P, x, y){
+  let bi = 0, bd = 1e18;
+  for (let i = 0; i < P.N; i++){ const dx = P.X[i] - x, dy = P.Y[i] - y, d = dx * dx + dy * dy; if (d < bd){ bd = d; bi = i; } }
+  return bi * P.STEP;
+}
+function offsetPts(P, d){
+  const out = [];
+  for (let i = 0; i < P.N; i++){ const q = pAt(P, i * P.STEP); out.push([q.x + Math.sin(q.a) * d, q.y - Math.cos(q.a) * d]); }
+  return out;
+}
+function bezierPts(p0, p1, p2, p3){
+  const out = [];
+  for (let k = 0; k <= 32; k++){
+    const t = k / 32, m = 1 - t;
+    out.push([m * m * m * p0.x + 3 * m * m * t * p1.x + 3 * m * t * t * p2.x + t * t * t * p3.x,
+              m * m * m * p0.y + 3 * m * m * t * p1.y + 3 * m * t * t * p2.y + t * t * t * p3.y]);
+  }
+  return out;
+}
+function roundedRect(x0, y0, x1, y1, r){
+  const pts = [], arc = (cx, cy, a0) => { for (let k = 0; k <= 12; k++){ const a = a0 + k / 12 * Math.PI / 2; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } };
+  arc(x1 - r, y0 + r, -Math.PI / 2); arc(x1 - r, y1 - r, 0); arc(x0 + r, y1 - r, Math.PI / 2); arc(x0 + r, y0 + r, Math.PI);
+  return pts;
+}
+function strokePath(c, P){
+  c.beginPath(); c.moveTo(P.X[0], P.Y[0]);
+  for (let i = 1; i < P.N; i++) c.lineTo(P.X[i], P.Y[i]);
+  if (P.closed) c.closePath();
+  c.stroke();
+}
+
+/* ================= world layout ================= */
+const CTRL = [[0.08,0.25],[0.25,0.06],[0.5,0.12],[0.75,0.05],[0.93,0.22],[0.92,0.5],[0.95,0.8],[0.78,0.95],[0.5,0.84],[0.22,0.95],[0.06,0.75],[0.1,0.5]];
+const ROAD_IN = 24, ROAD_HALF = 19, LANE = 9.5, BAR_R = 28, GAP = 9, WID = 30;
+let TRK = null, TX = new Float32Array(0), TY = new Float32Array(0), TN = 0, TL = 0, STEP = 1;
+let ROAD = null, LANES = [null, null], KEYLEN = {};
+let station = null, tunnel = null, pond = null, site = null, spur = null, works = null, crane = null, ex = null, dozer = null;
+let trees = [], houses = [], flies = [], signs = [];
+const flowers = [];
+const build = { slots: [], blocks: [], fill: [], total: 0, done: false, doneT: 0, pick: -1 }; // pick: the colour sign's choice (-1 = any colour)
+const nextCol = () => build.pick >= 0 ? TOY[build.pick] : pick(TOY);
+const mod = x => ((x % TL) + TL) % TL;
+let MX0 = 0, MX1 = 1, MY0 = 0, MY1 = 1;
+const mapX = x => MX0 + x * (MX1 - MX0), mapY = y => MY0 + y * (MY1 - MY0);
+const at = s => pAt(TRK, s);
+
+function buildRoadLoop(){
+  const c = (ROAD_IN + ROAD_HALF) * U;
+  const rc = Math.max(10, Math.min(72 * U, (Math.min(W, H) - 2 * c) / 2 - 2));
+  ROAD = makePath(roundedRect(c, c, W - c, H - c, rc), true);
+  LANES[0] = makePath(offsetPts(ROAD, LANE * U), true);
+  const inner = offsetPts(ROAD, -LANE * U); inner.reverse();
+  LANES[1] = makePath(inner, true);
+  KEYLEN = { L0: LANES[0].L, L1: LANES[1].L };
+  let tm = c + (ROAD_HALF + 50) * U;
+  tm = Math.min(tm, (Math.min(W, H) - 90) / 2);
+  MX0 = tm; MX1 = W - tm; MY0 = tm; MY1 = H - tm;
+}
+function buildTrack(){
+  const P = CTRL.map(([x, y]) => [mapX(x), mapY(y)]), n = P.length, raw = [];
+  for (let i = 0; i < n; i++){
+    const p0 = P[(i - 1 + n) % n], p1 = P[i], p2 = P[(i + 1) % n], p3 = P[(i + 2) % n];
+    for (let k = 0; k < 40; k++){
+      const t = k / 40, t2 = t * t, t3 = t2 * t;
+      const cr = j => 0.5 * ((2 * p1[j]) + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3);
+      raw.push([cr(0), cr(1)]);
+    }
+  }
+  TRK = makePath(raw, true);
+  TX = TRK.X; TY = TRK.Y; TN = TRK.N; TL = TRK.L; STEP = TRK.STEP;
+}
+function nearestIdx(x, y){
+  let bi = 0, bd = 1e18;
+  for (let i = 0; i < TN; i++){ const dx = TX[i] - x, dy = TY[i] - y, d = dx * dx + dy * dy; if (d < bd){ bd = d; bi = i; } }
+  return bi;
+}
+const minD2 = (x, y) => pMinD2(TRK, x, y, 3);
+function minD2Excl(x, y, ci, excl){
+  let bd = 1e18; const ex_ = Math.ceil(excl / STEP);
+  for (let i = 0; i < TN; i += 2){
+    let di = Math.abs(i - ci); di = Math.min(di, TN - di); if (di < ex_) continue;
+    const dx = TX[i] - x, dy = TY[i] - y, d = dx * dx + dy * dy; if (d < bd) bd = d;
+  }
+  return bd;
+}
+function nearestS(x, y, center, range){
+  const c0 = Math.round(center / STEP), r = Math.ceil(range / STEP);
+  let bk = c0, bd = 1e18;
+  for (let k = c0 - r; k <= c0 + r; k++){
+    const i = ((k % TN) + TN) % TN, dx = TX[i] - x, dy = TY[i] - y, d = dx * dx + dy * dy;
+    if (d < bd){ bd = d; bk = k; }
+  }
+  return bk * STEP;
+}
+function insideTrack(x, y){
+  let inside = false;
+  for (let i = 0, j = TN - 4; i < TN; j = i, i += 4){
+    const xi = TX[i], yi = TY[i], xj = TX[j], yj = TY[j];
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+  }
+  return inside;
+}
+function buildFeatures(){
+  let i = nearestIdx(mapX((CTRL[1][0] + CTRL[2][0]) / 2), mapY((CTRL[1][1] + CTRL[2][1]) / 2));
+  let p = at(i * STEP), nx = -Math.sin(p.a), ny = Math.cos(p.a);
+  station = { s: i * STEP, a: p.a, cx: p.x + nx * 30 * U, cy: p.y + ny * 30 * U };
+  station.lamps = [-40, 40].map(lx => ({ x: station.cx + Math.cos(p.a) * lx * U + nx * 6 * U, y: station.cy + Math.sin(p.a) * lx * U + ny * 6 * U }));
+  i = nearestIdx(mapX((CTRL[5][0] + CTRL[6][0]) / 2), mapY((CTRL[5][1] + CTRL[6][1]) / 2));
+  const half = 60 * U;
+  p = at(i * STEP);
+  tunnel = { s0: mod(i * STEP - half), s1: mod(i * STEP + half), cx: p.x, cy: p.y };
+}
+function inTunnel(s){ return tunnel && mod(s - tunnel.s0) < mod(tunnel.s1 - tunnel.s0); }
+
+/* ---------- building site + spur road ---------- */
+function siteDist(x, y){
+  if (!site) return 1e9;
+  const q = site.fromW(x, y);
+  const du = Math.max(site.u0 - q.u, 0, q.u - site.u1), dw = Math.max(-site.wn - q.w, 0, q.w - site.wp);
+  return Math.hypot(du, dw);
+}
+function buildSite(){
+  site = null; spur = null; crane = null; ex = null;
+  const ci = nearestIdx(mapX(CTRL[8][0]), mapY(CTRL[8][1])), p = at(ci * STEP);
+  const o = { x: Math.sin(p.a), y: -Math.cos(p.a) }, eu = { x: -o.x, y: -o.y }, ew = { x: -eu.y, y: eu.x };
+  const toW = (u, w) => ({ x: p.x + eu.x * u + ew.x * w, y: p.y + eu.y * u + ew.y * w });
+  const fromW = (x, y) => { const dx = x - p.x, dy = y - p.y; return { u: dx * eu.x + dy * eu.y, w: dx * ew.x + dy * ew.y }; };
+  let uMax = 40 * U;
+  for (let u = 40 * U; u < 560 * U; u += 3 * U){ const q = toW(u, 0); if (minD2Excl(q.x, q.y, ci, 100 * U) < (46 * U) ** 2) break; uMax = u; }
+  const u0 = (BAR_R + 30) * U, room = uMax - u0 - 6 * U;
+  let depth = Math.min(room, 340 * U);
+  if (room > 360 * U && room - depth < 150 * U) depth = room - 150 * U; // leave space for the duck pond
+  if (depth < 150 * U) return;
+  const u1 = u0 + depth;
+  const probeW = sign => {
+    let m = 240 * U;
+    for (const f of [0, 0.25, 0.5, 0.75, 1]){
+      const u = u0 + depth * f; let w = 0;
+      for (; w < 240 * U; w += 3 * U){ const q = toW(u, w * sign); if (minD2(q.x, q.y) < (42 * U) ** 2 || q.x < 8 || q.y < 8 || q.x > W - 8 || q.y > H - 8) break; }
+      m = Math.min(m, w);
+    }
+    return m;
+  };
+  const wp = probeW(1), wn = probeW(-1);
+  if (wp < 42 * U || wn < 42 * U) return;
+  site = { p, o, eu, ew, theta: Math.atan2(eu.y, eu.x), u0, u1, wn, wp, uEnd: Math.max(u0 + 50 * U, u1 - 72 * U), toW, fromW, ci };
+  const sB = wn >= wp ? -1 : 1, bMag = Math.max(wn, wp), xMag = Math.min(wn, wp), sX = -sB;
+  site.sB = sB; site.sX = sX;
+  site.pile = { u: site.uEnd + 46 * U, w: LANE * U };
+  // building + crane
+  const bw0 = 30 * U, bw1 = bMag - 34 * U;
+  build.slots = []; build.total = 0;
+  if (bw1 - bw0 >= 36 * U){
+    const blen = Math.min((bw1 - bw0) * 1.25, site.uEnd - u0 - 24 * U, 120 * U);
+    if (blen >= 36 * U){
+      const bu0 = u0 + 18 * U, bu1 = bu0 + blen, w0 = Math.min(sB * bw0, sB * bw1), w1 = Math.max(sB * bw0, sB * bw1);
+      site.bld = { u0: bu0, u1: bu1, w0, w1 };
+      const B = 11 * U, iu0 = bu0 + B / 2, iu1 = bu1 - B / 2, iw0 = w0 + B / 2, iw1 = w1 - B / 2;
+      const A = iu1 - iu0, Bw = iw1 - iw0, per = 2 * (A + Bw), n = Math.max(4, Math.floor(per / B));
+      for (let k = 0; k < n; k++){
+        let d = k * per / n, u, w;
+        if (d < A){ u = iu0 + d; w = iw0; }
+        else if ((d -= A) < Bw){ u = iu1; w = iw0 + d; }
+        else if ((d -= Bw) < A){ u = iu1 - d; w = iw1; }
+        else { d -= A; u = iu0; w = iw1 - d; }
+        build.slots.push({ u, w });
+      }
+      build.total = build.slots.length * 2;
+      // re-lay any blocks already built (the ring may have a different number of slots now)
+      const nS = build.slots.length, old = build.blocks.slice(0, build.total);
+      build.fill = build.slots.map(() => 0);
+      build.blocks = old.map((b, i) => { build.fill[i % nS]++; return { c: b.c, k: i % nS, l: Math.floor(i / nS) }; });
+      site.stack = { u: Math.min(bu1 + 30 * U, u1 - 16 * U), w: sB * Math.max(bw0 + 8 * U, (bw0 + bw1) / 2) };
+      const cu = bu1 - 6 * U, cw = sB * (bMag - 15 * U);
+      let J = Math.hypot(site.stack.u - cu, site.stack.w - cw);
+      for (const s of build.slots) J = Math.max(J, Math.hypot(s.u - cu, s.w - cw));
+      J += 12 * U;
+      crane = { cu, cw, J, ang: Math.atan2(site.stack.w - cw, site.stack.u - cu), r: J * 0.6, phase: 'toStack', t: 0, carry: false, boost: 0, col: pick(TOY), depth: 0,
+        held: 0, man: 0, tu: 0, tw: 0, hum: 0, last: null, dropAt: null };
+    }
+  }
+  // excavator, cabin, workers
+  if (xMag >= 66 * U){
+    const exu = u0 + 58 * U;
+    if (exu + 30 * U < u1){
+      ex = { u: exu, w: sX * 50 * U, t: 0, boost: 0, ang: Math.PI, boom: 28 * U, curl: 0, load: 0, dumped: false, holeA: Math.PI,
+        held: 0, man: 0, tu: 0, tw: 0, hum: 0, act: null, actT: 0, blend: 1, from: null };
+      ex.hole = { u: exu - 40 * U, w: ex.w };
+      if (xMag - 50 * U >= 46 * U){ ex.heapA = sX * Math.PI / 2; ex.heap = { u: exu, w: ex.w + sX * 40 * U }; }
+      else { ex.heapA = 0; ex.heap = { u: exu + 40 * U, w: ex.w }; }
+    }
+  }
+  site.cabin = null;
+  if (xMag >= 60 * U){
+    const cab = { u: u1 - 22 * U, w: sX * (xMag - 20 * U) };
+    const clash = ex && Math.hypot(cab.u - ex.heap.u, cab.w - ex.heap.w) < 38 * U;
+    if (!clash) site.cabin = cab;
+  }
+  site.workers = [{ u: u0 + 12 * U, w: sB * 36 * U, ph: 0 }];
+  if (ex) site.workers.push({ u: ex.hole.u + 4 * U, w: ex.w + sX * 24 * U, ph: 1.7 });
+
+  // spur road joining the inner lane of the road loop
+  const findR = wOff => {
+    let best = null, bestD = 1e18;
+    for (let r = 10 * U; r < 600 * U; r += 1){
+      const q = { x: p.x + o.x * r + ew.x * wOff, y: p.y + o.y * r + ew.y * wOff };
+      if (q.x < -20 || q.y < -20 || q.x > W + 20 || q.y > H + 20) break;
+      const d = pMinD2(LANES[1], q.x, q.y, 1);
+      if (d < 9){ if (d <= bestD){ best = r; bestD = d; } else break; }
+      else if (best !== null) break;
+    }
+    return best;
+  };
+  const rIn = findR(-LANE * U), rOut = findR(LANE * U);
+  if (rIn === null || rOut === null) return;
+  const R = 20 * U;
+  if (Math.min(rIn, rOut) - R < (BAR_R + 26 + 5 + 12) * U) return;
+  const ptIn = toW(-rIn, -LANE * U), ptOut = toW(-rOut, LANE * U);
+  const L1 = LANES[1], m1 = x => ((x % L1.L) + L1.L) % L1.L, k = R * 0.55;
+  const sEntryL = m1(pNearestS(L1, ptIn.x, ptIn.y) - R), sExitL = m1(pNearestS(L1, ptOut.x, ptOut.y) + R);
+  const q0 = pAt(L1, sEntryL), P0 = { x: q0.x, y: q0.y }, P3 = toW(-(rIn - R), -LANE * U);
+  const CE = makePath(bezierPts(P0, { x: P0.x + Math.cos(q0.a) * k, y: P0.y + Math.sin(q0.a) * k }, { x: P3.x - eu.x * k, y: P3.y - eu.y * k }, P3), false);
+  const SIend = toW(site.uEnd, -LANE * U);
+  const SI = makePath([[P3.x, P3.y], [SIend.x, SIend.y]], false);
+  const UTa = toW(site.uEnd + 12 * U, -LANE * U), UTb = toW(site.uEnd + 12 * U, LANE * U), UTend = toW(site.uEnd, LANE * U);
+  const UT = makePath(bezierPts(SIend, UTa, UTb, UTend), false);
+  const SOend = toW(-(rOut - R), LANE * U);
+  const SO = makePath([[UTend.x, UTend.y], [SOend.x, SOend.y]], false);
+  const q3 = pAt(L1, sExitL);
+  const CX = makePath(bezierPts(SOend, { x: SOend.x + o.x * k, y: SOend.y + o.y * k }, { x: q3.x - Math.cos(q3.a) * k, y: q3.y - Math.sin(q3.a) * k }, { x: q3.x, y: q3.y }), false);
+  spur = { p, o, eu, ew, S: ci * STEP, rIn, rOut, R, CE, SI, UT, SO, CX, sEntryL, sExitL, SIstart: rIn - R, uEnd: site.uEnd };
+}
+
+/* ---------- site yard: things in the way, job signs, bulldozer, sand piles ---------- */
+const SIGN_R = 17;
+function obsDist(o, u, w){
+  if (o.c) return Math.hypot(u - o.u, w - o.w) - o.r;
+  const du = Math.max(o.u0 - u, 0, u - o.u1), dw = Math.max(o.w0 - w, 0, w - o.w1);
+  return du || dw ? Math.hypot(du, dw) : -Math.min(u - o.u0, o.u1 - u, w - o.w0, o.w1 - w);
+}
+// room around a site point before the fence or something in the way: who is 'dz' (the bulldozer) or 'pl' (a pushed pile)
+function siteRoom(u, w, who){
+  let d = Math.min(u - site.u0, site.u1 - u, w + site.wn, site.wp - w) - 4 * U;
+  for (const o of site.obs) if (o[who]) d = Math.min(d, obsDist(o, u, w));
+  return d;
+}
+function dozerFits(u, w, a){
+  const o = 8 * U, r = 13 * U, c = Math.cos(a) * o, s = Math.sin(a) * o;
+  return siteRoom(u + c, w + s, 'dz') >= r && siteRoom(u - c, w - s, 'dz') >= r;
+}
+function buildYard(){
+  signs = []; dozer = null;
+  if (!site) return;
+  site.piles = [{ u: site.pile.u, w: site.pile.w, s: 10 }];
+  const O = site.obs = [];
+  const R = (u0, u1, w0, w1) => O.push({ u0, u1, w0, w1, dz: true, pl: true });
+  const C = (u, w, r, dz = true, pl = true) => O.push({ c: true, u, w, r, dz, pl });
+  const rh = (ROAD_HALF + 3) * U;
+  R(site.u0 - 80 * U, site.uEnd, -rh, rh);
+  C(site.uEnd, 0, 31 * U, true, false); C(site.uEnd, 0, 24 * U, false, true); // where the trucks swing round
+  if (site.bld){ const b = site.bld; R(b.u0 - 3 * U, b.u1 + 3 * U, b.w0 - 3 * U, b.w1 + 3 * U); }
+  if (crane) C(crane.cu, crane.cw, 11 * U);
+  if (site.stack) C(site.stack.u, site.stack.w, 17 * U);
+  if (ex){ C(ex.u, ex.w, 21 * U); C(ex.hole.u, ex.hole.w, 12 * U); C(ex.heap.u, ex.heap.w, 12 * U); }
+  if (site.cabin){ const k = site.cabin; R(k.u - 18 * U, k.u + 18 * U, k.w - 12 * U, k.w + 12 * U); }
+  for (const wk of site.workers) C(wk.u, wk.w, 9 * U);
+
+  // job signs: a row (or column) near the fence, clear of the digger's arm and the tipping spot
+  // (one at a time if a whole row won't fit)
+  const kinds = [];
+  if (spur) kinds.push('tip', 'mix');
+  if (crane) kinds.push('crane', 'col');
+  const SR = SIGN_R * U, gapS = SR * 2 + 6 * U;
+  const room = (u, w) => Math.min(siteRoom(u, w, 'dz'), ex ? Math.hypot(u - ex.u, w - ex.w) - 52 * U : 1e9,
+    Math.hypot(u - site.pile.u, w - site.pile.w) - 32 * U);
+  const layout = (list, p) => list.map((kind, i) => { const k = (i - (list.length - 1) / 2) * gapS; return { kind, u: p.u + p.au * k, w: p.w + p.aw * k, bounce: 0, shake: 0 }; });
+  const spots = list => { // every place the row fits, best first (hugging the fence, with a bit of room)
+    const out = [], n = list.length;
+    for (const [au, aw] of [[site.eu.x, site.ew.x], [site.eu.y, site.ew.y]]){
+      for (let u = site.u0; u <= site.u1; u += 5 * U) for (let w = -site.wn; w <= site.wp; w += 5 * U){
+        let m = 1e9;
+        for (let i = 0; i < n && m >= SR + 4 * U; i++){ const k = (i - (n - 1) / 2) * gapS; m = Math.min(m, room(u + au * k, w + aw * k)); }
+        if (m >= SR + 4 * U) out.push({ u, w, au, aw, score: Math.min(u - site.u0, site.u1 - u, w + site.wn, site.wp - w) - 0.5 * Math.min(m, SR + 20 * U) });
+      }
+    }
+    return out.sort((a, b) => a.score - b.score);
+  };
+  // of the best few spots, use the one that leaves the bulldozer the most ground to drive round
+  const tryRow = list => {
+    const picks = [];
+    for (const p of spots(list)){ if (picks.length >= 10) break; if (!picks.some(o => Math.hypot(o.u - p.u, o.w - p.w) < 24 * U)) picks.push(p); }
+    let best = null, bn = -1;
+    for (const p of picks){
+      const row = layout(list, p), n0 = O.length;
+      for (const s of row) C(s.u, s.w, SR + 3 * U);
+      const n = dozerRegion().length;
+      O.length = n0;
+      if (n > bn){ bn = n; best = row; }
+    }
+    return best;
+  };
+  signs = (kinds.length && tryRow(kinds)) || [];
+  if (!signs.length) for (const kind of kinds){ const s = tryRow([kind]); if (s){ signs.push(s[0]); C(s[0].u, s[0].w, SR + 3 * U); } }
+  else for (const s of signs) C(s.u, s.w, SR + 3 * U);
+
+  // bulldozer: parked in the roomiest spot of the biggest patch it can drive round
+  const region = dozerRegion(), { G, nw } = site.dg;
+  let bd = 15 * U, home = null;
+  for (const c of region){
+    const u = site.u0 + (((c / nw) | 0) + 0.5) * G, w = -site.wn + (c % nw + 0.5) * G;
+    for (let k = 0; k < 8; k++){
+      const a = k * Math.PI / 4, o = 8 * U, m = Math.min(siteRoom(u + Math.cos(a) * o, w + Math.sin(a) * o, 'dz'), siteRoom(u - Math.cos(a) * o, w - Math.sin(a) * o, 'dz'));
+      if (m > bd){ bd = m; home = { u, w, a }; }
+    }
+  }
+  if (home) dozer = { u: home.u, w: home.w, a: home.a, v: 0, held: 0, tu: home.u, tw: home.w, rev: false, odo: 0, chugT: 0, beepT: 0, bonkT: 0, smokeT: 0, bounce: 0,
+    path: null, planT: 0, pu: 0, pw: 0, backT: 0, blockT: 0 };
+}
+/* ---------- the bank: tap it and a robber runs out to his getaway car ---------- */
+// On the inside of the road loop, beside a straight, with its front to the road. The robber's car parks at the kerb
+// of the inner lane a little way along (sPark), pulled over so the traffic goes by.
+let bank = null;
+const BANK_W = 56, BANK_D = 38, BANK_FRONT = 41; // U; the front is 39U in from the middle of the road
+function buildBank(){
+  bank = null;
+  let best = null, bs = 1e18;
+  for (let s = 0; s < ROAD.L; s += 6 * U){
+    const q = pAt(ROAD, s), ca = Math.cos(q.a), sa = Math.sin(q.a);
+    if ([-70, 70].some(d => Math.abs(angDiff(pAt(ROAD, s + d * U).a, q.a)) > 0.02)) continue; // on a straight
+    const P = (t, n) => ({ x: q.x + (ca * t - sa * n) * U, y: q.y + (sa * t + ca * n) * U }); // t along, n inwards, in U
+    const c = P(0, BANK_FRONT + BANK_D / 2);
+    let ok = true;
+    for (const [t, n] of [[-1, 0], [1, 0], [-1, 1], [1, 1], [0, 1], [0, 0.5]]){
+      const p = P(t * (BANK_W / 2 + 4), BANK_FRONT + n * (BANK_D + 4));
+      if (p.x < 8 || p.y < 8 || p.x > W - 8 || p.y > H - 8 || minD2(p.x, p.y) < (22 * U) ** 2 || siteDist(p.x, p.y) < 8 * U){ ok = false; break; }
+    }
+    if (!ok || Math.hypot(c.x - station.cx, c.y - station.cy) < 90 * U || Math.hypot(c.x - tunnel.cx, c.y - tunnel.cy) < 100 * U) continue;
+    if ((works && Math.hypot(c.x - works.x, c.y - works.y) < 130 * U) || nearWash(c.x, c.y, 40 * U)) continue;
+    if (sides.some(j => Math.hypot(c.x - j.x, c.y - j.y) < 170 * U)) continue;
+    if (spur && [spur.CE, spur.CX, spur.SI, spur.SO].some(Pp => pMinD2(Pp, c.x, c.y, 2) < (130 * U) ** 2)) continue;
+    const score = c.y + Math.abs(c.x - W / 2) * 0.5; // near the middle of the top if it can
+    if (score < bs){ bs = score; const p = P(-32, LANE); best = { x: c.x, y: c.y, a: q.a, door: P(0, BANK_FRONT), lamp: P(BANK_W / 2 - 6, BANK_FRONT + 5), sPark: pNearestS(LANES[1], p.x, p.y) }; }
+  }
+  if (best) bank = { ...best, alarm: 0, ringT: 0 };
+}
+function inBank(x, y, pad){
+  const dx = x - bank.x, dy = y - bank.y, ca = Math.cos(bank.a), sa = Math.sin(bank.a);
+  return Math.abs(dx * ca + dy * sa) < BANK_W / 2 * U + pad && Math.abs(-dx * sa + dy * ca) < BANK_D / 2 * U + pad;
+}
+function buildPond(){
+  pond = null;
+  let best = null, bc = 0;
+  const G = 36;
+  for (let i = 1; i < G; i++) for (let j = 1; j < G; j++){
+    const x = W * i / G, y = H * j / G;
+    let cl = Math.sqrt(minD2(x, y)) - 22 * U;
+    cl = Math.min(cl, Math.sqrt(pMinD2(ROAD, x, y, 4)) - (ROAD_HALF + 12) * U, siteDist(x, y) - 14 * U,
+      Math.hypot(x - station.cx, y - station.cy) - 58 * U, Math.hypot(x - tunnel.cx, y - tunnel.cy) - 70 * U);
+    if (works) cl = Math.min(cl, Math.hypot(x - works.x, y - works.y) - 90 * U);
+    if (carWash) cl = Math.min(cl, Math.hypot(x - carWash.x, y - carWash.y) - 70 * U);
+    if (trainWash) cl = Math.min(cl, Math.hypot(x - trainWash.x, y - trainWash.y) - 80 * U);
+    if (bank) cl = Math.min(cl, Math.hypot(x - bank.x, y - bank.y) - 60 * U);
+    if (spur) for (const P of [spur.CE, spur.CX]) cl = Math.min(cl, Math.sqrt(pMinD2(P, x, y, 2)) - (ROAD_HALF + 10) * U);
+    if (cl > bc){ bc = cl; best = { x, y }; }
+  }
+  if (best && bc > 34 * U){ const rx = Math.min(92 * U, bc); pond = { x: best.x, y: best.y, rx, ry: rx * 0.68 }; }
+}
+function buildWorks(){
+  works = null;
+  const c = (ROAD_IN + ROAD_HALF) * U, s = pNearestS(ROAD, c, H * 0.55), q = pAt(ROAD, s);
+  const nx = -Math.sin(q.a), ny = Math.cos(q.a); // points into the loop
+  let verge = 0;
+  for (let d = ROAD_HALF * U; d < 200 * U; d += 2 * U){ if (minD2(q.x + nx * d, q.y + ny * d) < (15 * U) ** 2) break; verge = d - ROAD_HALF * U; }
+  const ph = clamp(verge - 14 * U, 0, 24 * U);
+  works = { x: q.x, y: q.y, a: q.a, nx, ny, ph, roller: 0, rdir: 1, rpause: 0, bounce: 0 };
+  works.toW = (t, off) => ({ x: q.x + Math.cos(q.a) * t + nx * off, y: q.y + Math.sin(q.a) * t + ny * off });
+  works.worker = works.toW(74 * U, (ROAD_HALF + 12) * U);
+  works.lamps = [works.toW(-60 * U, (ROAD_HALF + 5) * U), works.toW(60 * U, (ROAD_HALF + 5) * U)];
+}
+/* ---------- car wash (a gantry over the road loop) and train wash (a shed over the track) ---------- */
+let carWash = null, trainWash = null;
+function buildWash(){
+  carWash = null; trainWash = null;
+  // car wash: on the right-hand straight, a third of the way down; the outer lane (driven clockwise, so downwards) stops in it
+  const c = (ROAD_IN + ROAD_HALF) * U, rc = Math.max(10, Math.min(72 * U, (Math.min(W, H) - 2 * c) / 2 - 2));
+  const ya = c + rc + 44 * U, yb = H - c - rc - 44 * U;
+  if (yb > ya){
+    const q = pAt(ROAD, pNearestS(ROAD, W - c, clamp(H * 0.3, ya, yb)));
+    const lx = q.x + Math.sin(q.a) * LANE * U, ly = q.y - Math.cos(q.a) * LANE * U;
+    carWash = { x: q.x, y: q.y, a: q.a, s0: pNearestS(LANES[0], lx, ly), busy: 0, spin: 0 };
+  }
+  // train wash: the straightest stretch of track that's clear of the station, tunnel, crossing, road and site
+  const HL = 52 * U, HW = 26 * U;
+  const away = (s, s0, r) => { const d = mod(s - s0); return Math.min(d, TL - d) > r; };
+  let best = null, bs = 1e18;
+  for (let i = 0; i < TN; i += 4){
+    const s = i * STEP;
+    if (!away(s, station.s, 170 * U) || !away(s, (tunnel.s0 + mod(tunnel.s1 - tunnel.s0) / 2), mod(tunnel.s1 - tunnel.s0) / 2 + 110 * U)) continue;
+    if (spur && !away(s, spur.S, 200 * U)) continue;
+    const p = at(s), A = at(s - HL), B = at(s + HL), a = Math.atan2(B.y - A.y, B.x - A.x), ux = Math.cos(a), uy = Math.sin(a);
+    let dev = 0;
+    for (let k = -HL; k <= HL; k += 5 * U){ const t = at(s + k); dev = Math.max(dev, Math.abs(-(t.x - p.x) * uy + (t.y - p.y) * ux)); }
+    if (dev > 5 * U) continue;
+    let ok = true;
+    for (const [du, dw] of [[-HL, -HW], [HL, -HW], [-HL, HW], [HL, HW], [0, -HW], [0, HW]]){
+      const x = p.x + ux * du - uy * dw, y = p.y + uy * du + ux * dw;
+      if (x < 6 || y < 6 || x > W - 6 || y > H - 6 || pMinD2(ROAD, x, y, 3) < ((ROAD_HALF + 4) * U) ** 2 || siteDist(x, y) < 6 * U) ok = false;
+      if (works && Math.hypot(x - works.x, y - works.y) < 70 * U) ok = false;
+    }
+    if (!ok) continue;
+    const score = dev / U + 3 * p.x / W; // straight first, then the left-hand side
+    if (score < bs){ bs = score; best = { s, x: p.x, y: p.y, a }; }
+  }
+  if (best) trainWash = { ...best, sStop: mod(best.s + 31 * U), busy: 0, spin: 0 }; // stops with the engine in the middle
+}
+/* ---------- side roads: a road off each side of the map, so vehicles come and go ---------- */
+// Each is a T off the loop's outer edge, in its own frame: t along the road the outer lane's way, n outwards (off the
+// map). The outer lane turns off and on with left turns. The inner lane turns right, across the outer lane, so its
+// turns (and every way in) wait for a gap and for the junction to be free (jn.busy). The road off the map is two
+// linear keys: 'O'+id going out and 'I'+id coming in.
+let sides = [];
+const JR0 = 14, JR1 = LANE * 2 + JR0; // left and right turn radius
+const wrap = (x, L) => ((x % L) + L) % L;
+function buildSides(){
+  sides = [];
+  const c = (ROAD_IN + ROAD_HALF) * U, rc = Math.max(10, Math.min(72 * U, (Math.min(W, H) - 2 * c) / 2 - 2));
+  const ya = c + rc + 64 * U, yb = H - c - rc - 64 * U;
+  if (yb < ya) return;
+  // left side a third of the way down (clear of the roadworks), right side two thirds down (clear of the car wash)
+  for (const [right, fy] of [[false, 0.3], [true, 0.68]]){
+    let y = null, bd = 1e18;
+    for (let yy = ya; yy <= yb; yy += 2 * U){
+      if (!right && works && Math.abs(yy - works.y) < 120 * U) continue;
+      if (right && carWash && Math.abs(yy - carWash.y) < 130 * U) continue;
+      if (Math.abs(yy - H * fy) < bd){ bd = Math.abs(yy - H * fy); y = yy; }
+    }
+    if (y !== null) sides.push(makeSide(sides.length, right ? W - c : c, y));
+  }
+}
+function makeSide(id, x, y){
+  const q = pAt(ROAD, pNearestS(ROAD, x, y)), ca = Math.cos(q.a), sa = Math.sin(q.a);
+  const P = (t, n) => ({ x: q.x + (ca * t + sa * n) * U, y: q.y + (sa * t - ca * n) * U }); // t, n in U
+  const T = { x: ca, y: sa }, N = { x: sa, y: -ca }, neg = d => ({ x: -d.x, y: -d.y });
+  const bz = (a, da, b, db, r) => { const k = r * 0.552 * U; return makePath(bezierPts(a, { x: a.x + da.x * k, y: a.y + da.y * k }, { x: b.x - db.x * k, y: b.y - db.y * k }, b), false); };
+  const L = LANE, n0 = LANE + JR0, off = ROAD_IN + ROAD_HALF + 64; // the far end is well off the screen
+  const line = (a, b) => makePath([[a.x, a.y], [b.x, b.y]], false);
+  const XO = line(P(-L, n0), P(-L, off)), XI = line(P(L, off), P(L, n0));
+  const o0 = bz(P(-L - JR0, L), T, P(-L, n0), N, JR0), o1 = bz(P(L + JR0, -L), neg(T), P(-L, n0), N, JR1);
+  const i0 = bz(P(L, n0), neg(N), P(L + JR0, L), T, JR0), i1 = bz(P(L, n0), neg(N), P(-L - JR0, -L), neg(T), JR1);
+  const L0 = LANES[0], L1 = LANES[1], sOf = (lane, Pt, i) => pNearestS(lane, Pt.X[i], Pt.Y[i]);
+  const cross = Pt => { // where a right turn crosses the outer lane
+    let bi = 0, bd = 1e18;
+    for (let i = 0; i < Pt.N; i++){ const d = pMinD2(L0, Pt.X[i], Pt.Y[i], 1); if (d < bd){ bd = d; bi = i; } }
+    return sOf(L0, Pt, bi);
+  };
+  const jn = { id, x: q.x, y: q.y, a: q.a, P, busy: null, off };
+  jn.sX = [sOf(L0, o0, 0), sOf(L1, o1, 0)]; // where each lane turns off
+  jn.sM = [sOf(L0, i0, i0.N - 1), sOf(L1, i1, i1.N - 1)]; // where each lane is joined
+  jn.cO = cross(o1); jn.cI = cross(i1);
+  const O = 'O' + id, I = 'I' + id;
+  jn.XO = { P: XO, start: 0, len: XO.L, keys: [[O, 0]], gone: true };
+  jn.XI = { P: XI, start: 0, len: XI.L, keys: [[I, 0]] };
+  // key modes: 'pas' is a ghost left in a lane for traffic behind (it doesn't hold up the turning vehicle itself);
+  // 'fix' stays put where the turn crosses the outer lane, so traffic there waits till it's across
+  jn.out = [
+    { P: o0, start: 0, len: o0.L, keys: [['L0', jn.sX[0], 'pas'], [O, -o0.L]], turn: true },
+    { P: o1, start: 0, len: o1.L, keys: [['L1', jn.sX[1], 'pas'], ['L0', jn.cO, 'fix'], [O, -o1.L]], turn: true, jn },
+  ];
+  jn.into = [
+    { P: i0, start: 0, len: i0.L, keys: [[I, XI.L], ['L0', jn.sM[0] - i0.L]], turn: true, jn, gate: v => entryGate(v, jn, 0), join: 0, joinS: jn.sM[0] },
+    { P: i1, start: 0, len: i1.L, keys: [[I, XI.L], ['L0', jn.cI, 'fix'], ['L1', jn.sM[1] - i1.L]], turn: true, jn, gate: v => entryGate(v, jn, 1), join: 1, joinS: jn.sM[1] },
+  ];
+  return jn;
+}
+function nearSide(x, y, r){
+  for (const jn of sides) for (const P of [jn.XO.P, jn.XI.P]) if (pMinD2(P, x, y, 2) < ((ROAD_HALF + 6) * U + r) ** 2) return true;
+  return false;
+}
+function nearWash(x, y, r){
+  return (carWash && Math.hypot(x - carWash.x, y - carWash.y) < r + 52 * U) || (trainWash && Math.hypot(x - trainWash.x, y - trainWash.y) < r + 62 * U);
+}
+// is a point inside a wash? (in its own frame: along the road/track and across it)
+function inWash(w, x, y, hl, hw){
+  const dx = x - w.x, dy = y - w.y, ca = Math.cos(w.a), sa = Math.sin(w.a);
+  return Math.abs(dx * ca + dy * sa) < hl && Math.abs(-dx * sa + dy * ca) < hw;
+}
+function bubbles(x, y, n, spread){
+  for (let i = 0; i < n; i++) fx.push({ t: 'bub', x: x + rand(-1, 1) * spread, y: y + rand(-1, 1) * spread, vx: rand(-14, 14) * U, vy: rand(-22, -6) * U, g: -6 * U, life: 0, max: rand(1, 1.9), r: rand(2, 5) * U });
+}
+function buildScenery(){
+  const R = mulberry(7);
+  trees = []; houses = []; flies = [];
+  const placed = [];
+  const ok = (x, y, r) => {
+    if (x < r + 4 || y < r + 4 || x > W - r - 4 || y > H - r - 4) return false;
+    if (minD2(x, y) < (r + 18 * U) ** 2) return false;
+    if (pMinD2(ROAD, x, y, 3) < ((ROAD_HALF + 4) * U + r) ** 2) return false;
+    if (spur) for (const P of [spur.CE, spur.CX, spur.SI, spur.SO]) if (pMinD2(P, x, y, 2) < ((ROAD_HALF + 6) * U + r) ** 2) return false;
+    if (siteDist(x, y) < r + 8 * U) return false;
+    if (pond && ((x - pond.x) / (pond.rx + r + 12 * U)) ** 2 + ((y - pond.y) / (pond.ry + r + 12 * U)) ** 2 < 1) return false;
+    if (Math.hypot(x - station.cx, y - station.cy) < r + 62 * U) return false;
+    if (Math.hypot(x - tunnel.cx, y - tunnel.cy) < r + 64 * U) return false;
+    if (works){ const wc = works.toW(0, (ROAD_HALF + 20) * U); if (Math.hypot(x - wc.x, y - wc.y) < r + 88 * U) return false; }
+    if (nearWash(x, y, r) || nearSide(x, y, r) || (bank && Math.hypot(x - bank.x, y - bank.y) < r + 40 * U)) return false;
+    if (x > W - 230 && y < 60 + r) return false; // the parent corner (5 buttons in the home-screen app)
+    for (const p of placed) if (Math.hypot(x - p.x, y - p.y) < r + p.r + 6 * U) return false;
+    return true;
+  };
+  const area = W * H / (U * U);
+  const ROOFS = ['#d64545', '#2d6cdf', '#f08c2b', '#7b4fd6', '#2a9d8f'];
+  const nHouses = clamp(Math.round(area / 150000), 1, 5);
+  for (let i = 0, tries = 0; i < nHouses && tries < 900; tries++){
+    const x = R() * W, y = R() * H, r = 20 * U;
+    if (ok(x, y, r)){ houses.push({ x, y, r, rot: (R() - 0.5) * 0.6, roof: ROOFS[Math.floor(R() * ROOFS.length)] }); placed.push({ x, y, r }); i++; }
+  }
+  const DARK = ['#2f7d32', '#3b8f3a', '#2c6e49', '#468a2c'];
+  const nTrees = clamp(Math.round(area / 14000), 10, 44);
+  for (let i = 0, tries = 0; i < nTrees && tries < 3000; tries++){
+    const r = (9 + R() * 12) * U, x = R() * W, y = R() * H;
+    if (ok(x, y, r)){ trees.push({ x, y, r, dark: DARK[Math.floor(R() * DARK.length)], apples: R() < 0.35, wig: 0 }); placed.push({ x, y, r }); i++; }
+  }
+  for (let i = 0; i < 18; i++) flies.push({ x: MX0 + R() * (MX1 - MX0), y: MY0 + R() * (MY1 - MY0), ph: R() * TAU, sp: 0.3 + R() * 0.6 });
+}
+
+/* ================= background ================= */
+function pathTrack(c){ c.beginPath(); c.moveTo(TX[0], TY[0]); for (let i = 1; i < TN; i++) c.lineTo(TX[i], TY[i]); c.closePath(); }
+function siteFrame(c){ c.translate(site.p.x, site.p.y); c.rotate(site.theta); }
+function drawBG(){
+  bg.width = Math.round(W * DPR); bg.height = Math.round(H * DPR);
+  const c = bctx; c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const R = mulberry(3);
+  c.fillStyle = '#8acb68'; c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 26; i++){
+    c.fillStyle = R() < 0.5 ? 'rgba(255,255,255,0.07)' : 'rgba(40,100,20,0.07)';
+    c.beginPath(); c.ellipse(R() * W, R() * H, (40 + R() * 130) * U, (30 + R() * 80) * U, R() * 3, 0, TAU); c.fill();
+  }
+  c.strokeStyle = 'rgba(48,112,30,0.35)'; c.lineWidth = 1.5 * U; c.lineCap = 'round';
+  const nBl = Math.round(W * H / 700);
+  for (let i = 0; i < nBl; i++){ const x = R() * W, y = R() * H; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (R() - 0.5) * 3 * U, y - 4 * U); c.stroke(); }
+
+  // road loop
+  c.lineJoin = 'round'; c.lineCap = 'butt';
+  c.save(); c.translate(2 * U, 3 * U); c.strokeStyle = 'rgba(0,0,0,0.15)'; c.lineWidth = (ROAD_HALF * 2 + 4) * U; strokePath(c, ROAD); c.restore();
+  c.strokeStyle = '#d7d2c8'; c.lineWidth = (ROAD_HALF * 2 + 5) * U; strokePath(c, ROAD);
+  c.strokeStyle = '#6e737b'; c.lineWidth = ROAD_HALF * 2 * U; strokePath(c, ROAD);
+  c.save(); c.setLineDash([10 * U, 10 * U]); c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 2 * U; strokePath(c, ROAD); c.restore();
+  for (const jn of sides) drawSideRoad(c, jn);
+
+  if (spur){
+    // spur tarmac from the loop to the site gate, with curved junction corners
+    c.strokeStyle = '#6e737b'; c.lineWidth = (LANE * 2 + 3) * U; strokePath(c, spur.CE); strokePath(c, spur.CX);
+    c.save(); siteFrame(c);
+    const rr0 = Math.min(spur.rIn, spur.rOut) - (LANE + 1) * U;
+    c.fillStyle = '#6e737b'; c.fillRect(-rr0, -ROAD_HALF * U, rr0 + site.u0 + 2 * U, ROAD_HALF * 2 * U);
+    c.strokeStyle = '#fff'; c.lineWidth = 3 * U;
+    c.beginPath(); c.moveTo(-(BAR_R + 3) * U, 0); c.lineTo(-(BAR_R + 3) * U, -ROAD_HALF * U); c.stroke();
+    c.beginPath(); c.moveTo((BAR_R + 3) * U, 0); c.lineTo((BAR_R + 3) * U, ROAD_HALF * U); c.stroke();
+    c.setLineDash([4 * U, 4 * U]); c.lineWidth = 2 * U;
+    c.beginPath(); c.moveTo(-rr0 + 2 * U, 0); c.lineTo(-rr0 + 2 * U, ROAD_HALF * U); c.stroke();
+    c.setLineDash([]);
+    c.restore();
+  }
+  if (site) drawSiteBG(c, R);
+
+  if (pond){
+    const { x, y, rx, ry } = pond;
+    c.fillStyle = '#6fb454'; c.beginPath(); c.ellipse(x, y + 3 * U, rx + 8 * U, ry + 8 * U, 0, 0, TAU); c.fill();
+    c.fillStyle = '#3fa3dd'; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, TAU); c.fill();
+    c.fillStyle = '#6cc3ef'; c.beginPath(); c.ellipse(x - rx * 0.12, y - ry * 0.14, rx * 0.72, ry * 0.62, 0, 0, TAU); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 2 * U;
+    c.beginPath(); c.ellipse(x - rx * 0.35, y - ry * 0.4, rx * 0.25, ry * 0.12, -0.2, Math.PI * 1.1, Math.PI * 1.8); c.stroke();
+    [[0.55, 0.3, 11], [-0.6, 0.35, 9], [0.3, -0.55, 8]].forEach(([ox, oy, r]) => {
+      const lx = x + ox * rx, ly = y + oy * ry;
+      c.fillStyle = '#3f9a3a'; c.beginPath(); c.moveTo(lx, ly); c.arc(lx, ly, r * U, 0.4, TAU - 0.1); c.closePath(); c.fill();
+    });
+  }
+  for (const h of houses){
+    c.save(); c.translate(h.x, h.y); c.rotate(h.rot);
+    const w = h.r * 2, d = h.r * 1.6;
+    c.fillStyle = 'rgba(0,0,0,0.18)'; rr(c, -w / 2 + 3 * U, -d / 2 + 4 * U, w, d, 3 * U); c.fill();
+    c.fillStyle = h.roof; rr(c, -w / 2, -d / 2, w, d / 2, 2 * U); c.fill();
+    c.fillStyle = shade(h.roof, -0.28); rr(c, -w / 2, 0, w, d / 2, 2 * U); c.fill();
+    c.strokeStyle = shade(h.roof, 0.35); c.lineWidth = 2 * U; c.beginPath(); c.moveTo(-w / 2 + 2 * U, 0); c.lineTo(w / 2 - 2 * U, 0); c.stroke();
+    c.fillStyle = '#7a5a48'; c.fillRect(w * 0.18, -d * 0.36, 7 * U, 7 * U);
+    c.fillStyle = '#f4e3c3'; c.fillRect(-4 * U, d / 2, 8 * U, 3 * U);
+    c.restore();
+  }
+  if (bank) drawBank(c);
+  if (works && works.ph > 0){
+    c.save(); c.translate(works.x, works.y); c.rotate(works.a);
+    c.fillStyle = '#3b3e44'; rr(c, -50 * U, (ROAD_HALF + 9) * U, 100 * U, works.ph, 3 * U); c.fill();
+    c.fillStyle = '#8b5a2b'; circle(c, 58 * U, (ROAD_HALF + 9) * U + works.ph / 2, Math.min(9 * U, works.ph / 2)); c.fill();
+    c.restore();
+  }
+  // wooden track
+  c.save(); c.translate(2 * U, 3.5 * U); pathTrack(c); c.strokeStyle = 'rgba(0,0,0,0.17)'; c.lineWidth = 31 * U; c.stroke(); c.restore();
+  pathTrack(c);
+  c.strokeStyle = '#dcab70'; c.lineWidth = 28 * U; c.stroke();
+  c.strokeStyle = '#a66f38'; c.lineWidth = 17 * U; c.stroke();
+  c.strokeStyle = '#e5b981'; c.lineWidth = 9 * U; c.stroke();
+  const pieces = Math.max(8, Math.round(TL / (92 * U)));
+  c.strokeStyle = 'rgba(110,62,24,0.55)'; c.lineWidth = 1.6 * U;
+  for (let k = 0; k < pieces; k++){
+    const p = at(k * TL / pieces), nx = -Math.sin(p.a), ny = Math.cos(p.a);
+    c.beginPath(); c.moveTo(p.x + nx * 14 * U, p.y + ny * 14 * U); c.lineTo(p.x - nx * 14 * U, p.y - ny * 14 * U); c.stroke();
+  }
+  if (spur){
+    c.save(); c.translate(spur.p.x, spur.p.y); c.rotate(spur.p.a);
+    c.fillStyle = '#6e737b'; c.fillRect(-ROAD_HALF * U, -15 * U, ROAD_HALF * 2 * U, 30 * U);
+    c.fillStyle = 'rgba(255,255,255,0.9)';
+    for (let k = -3; k <= 3; k++){ c.fillRect((k * 5 - 1) * U, -15 * U, 2 * U, 3 * U); c.fillRect((k * 5 - 1) * U, 12 * U, 2 * U, 3 * U); }
+    c.strokeStyle = '#2e2e33'; c.lineWidth = 3 * U;
+    for (const y of [-6.5, 6.5]){ c.beginPath(); c.moveTo(-ROAD_HALF * U, y * U); c.lineTo(ROAD_HALF * U, y * U); c.stroke(); }
+    c.restore();
+  }
+  drawWashBG(c);
+  // station
+  c.save(); c.translate(station.cx, station.cy); c.rotate(station.a);
+  c.fillStyle = 'rgba(0,0,0,0.16)'; rr(c, -44 * U, -8 * U, 92 * U, 24 * U, 3 * U); c.fill();
+  c.fillStyle = '#d9d0c1'; rr(c, -46 * U, -11 * U, 92 * U, 24 * U, 3 * U); c.fill();
+  c.fillStyle = '#ffd23f'; c.fillRect(-46 * U, -11 * U, 92 * U, 3 * U);
+  c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, -22 * U, 0, 48 * U, 15 * U, 3 * U); c.fill();
+  c.fillStyle = '#d64545'; rr(c, -24 * U, -3 * U, 48 * U, 15 * U, 3 * U); c.fill();
+  c.fillStyle = '#f2f2f2';
+  for (let k = 0; k < 4; k++) c.fillRect((-21 + k * 12) * U, -3 * U, 6 * U, 15 * U);
+  c.fillStyle = '#2d6cdf'; rr(c, 30 * U, 1 * U, 12 * U, 8 * U, 2 * U); c.fill();
+  for (const lx of [-40, 40]){ c.fillStyle = '#333'; circle(c, lx * U, 6 * U, 3.2 * U); c.fill(); c.fillStyle = '#ffe9a8'; circle(c, lx * U, 6 * U, 1.8 * U); c.fill(); }
+  c.restore();
+}
+// a side road running off the edge of the map, with rounded kerbs where it meets the loop (local frame: x = t, y = -n)
+function drawSideRoad(c, jn){
+  const h = ROAD_HALF * U, far = jn.off * U, fr = 12 * U;
+  const shape = (e, n0) => {
+    const r = fr - e;
+    c.beginPath(); c.moveTo(-h - fr, -n0); c.lineTo(-h - fr, -(h + e));
+    c.arc(-h - fr, -(h + fr), r, Math.PI / 2, 0, true);
+    c.lineTo(-h - e, -far); c.lineTo(h + e, -far); c.lineTo(h + e, -(h + fr));
+    c.arc(h + fr, -(h + fr), r, Math.PI, Math.PI / 2, true);
+    c.lineTo(h + fr, -n0); c.closePath();
+  };
+  const frame = (dx, dy) => { c.save(); c.translate(jn.x + dx, jn.y + dy); c.rotate(jn.a); };
+  frame(2 * U, 3 * U); c.fillStyle = 'rgba(0,0,0,0.15)'; shape(2.5 * U, h + 2.5 * U); c.fill(); c.restore();
+  frame(0, 0);
+  c.fillStyle = '#d7d2c8'; shape(2.5 * U, h - 2 * U); c.fill();
+  c.fillStyle = '#6e737b'; shape(0, h - 2 * U); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 2 * U;
+  c.save(); c.setLineDash([10 * U, 10 * U]); c.beginPath(); c.moveTo(0, -(h + 8 * U)); c.lineTo(0, -far); c.stroke(); c.restore();
+  // give way: a double broken line across the way in
+  c.save(); c.setLineDash([4 * U, 3 * U]); c.lineWidth = 1.8 * U;
+  for (const n of [h + 2 * U, h + 5.5 * U]){ c.beginPath(); c.moveTo(1 * U, -n); c.lineTo(h - 1 * U, -n); c.stroke(); }
+  c.restore();
+  c.restore();
+}
+// the bank, from above: a big slate roof, and a white stone porch with columns and steps along its front (towards
+// the road, -y here) with a gold coin over the door; an alarm bell on the corner (lit by drawBankAlarm)
+function drawBank(c){
+  const w = BANK_W * U, d = BANK_D * U, pd = 12 * U, y0 = -d / 2 + pd; // pd: the porch's depth
+  c.save(); c.translate(bank.x, bank.y); c.rotate(bank.a);
+  c.fillStyle = 'rgba(0,0,0,0.18)'; rr(c, -w / 2 + 3 * U, -d / 2 + 4 * U, w, d, 3 * U); c.fill();
+  // roof: two slopes and a ridge
+  c.fillStyle = '#7d8aa3'; rr(c, -w / 2, y0, w, (d - pd) / 2, 2 * U); c.fill();
+  c.fillStyle = '#5c6880'; rr(c, -w / 2, y0 + (d - pd) / 2, w, (d - pd) / 2, 2 * U); c.fill();
+  c.strokeStyle = '#a9b4c8'; c.lineWidth = 2 * U; c.beginPath(); c.moveTo(-w / 2 + 2 * U, y0 + (d - pd) / 2); c.lineTo(w / 2 - 2 * U, y0 + (d - pd) / 2); c.stroke();
+  // porch: steps, floor, columns
+  c.fillStyle = '#e9e3d4'; rr(c, -w / 2 + 4 * U, -d / 2 - 5 * U, w - 8 * U, 7 * U, 2 * U); c.fill();
+  c.strokeStyle = 'rgba(120,100,70,0.25)'; c.lineWidth = 1 * U;
+  for (const y of [-d / 2 - 2.8 * U, -d / 2 - 0.6 * U]){ c.beginPath(); c.moveTo(-w / 2 + 5 * U, y); c.lineTo(w / 2 - 5 * U, y); c.stroke(); }
+  c.fillStyle = '#f4efe3'; rr(c, -w / 2 + 1 * U, -d / 2, w - 2 * U, pd + 1 * U, 2 * U); c.fill();
+  for (let i = 0; i < 6; i++){
+    const x = -w / 2 + 6 * U + i * (w - 12 * U) / 5;
+    c.fillStyle = 'rgba(0,0,0,0.15)'; circle(c, x + 0.8 * U, -d / 2 + 2.6 * U, 2.6 * U); c.fill();
+    c.fillStyle = '#ffffff'; circle(c, x, -d / 2 + 1.9 * U, 2.6 * U); c.fill();
+  }
+  c.fillStyle = '#7a5a48'; rr(c, -5 * U, y0 - 2 * U, 10 * U, 3 * U, 1 * U); c.fill(); // the door
+  // the gold coin, on the roof over the door
+  const cy = y0 + 9 * U;
+  c.fillStyle = '#c99a00'; circle(c, 0, cy, 8.5 * U); c.fill();
+  c.fillStyle = '#ffd23f'; circle(c, 0, cy, 7 * U); c.fill();
+  c.strokeStyle = '#e0a800'; c.lineWidth = 1.4 * U; circle(c, 0, cy, 4.6 * U); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.2 * U; c.beginPath(); c.arc(0, cy, 5.8 * U, Math.PI * 1.1, Math.PI * 1.5); c.stroke();
+  c.restore();
+}
+function drawBankAlarm(c, time){
+  if (!bank) return;
+  const on = bank.alarm > 0, b = Math.floor(time * 8) % 2 === 0, L = bank.lamp;
+  c.fillStyle = '#555'; circle(c, L.x, L.y, 4.2 * U); c.fill();
+  c.fillStyle = on ? (b ? '#ff3b3b' : '#3a86ff') : '#b23a3a'; circle(c, L.x, L.y, 3 * U); c.fill();
+  if (on){ // ringing
+    c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 1.5 * U;
+    for (const r of [7, 10.5]){ c.beginPath(); c.arc(L.x, L.y, r * U * (b ? 1 : 1.12), -2.4, -0.7); c.stroke(); }
+  }
+}
+function drawSiteBG(c, R){
+  const { u0, u1, wn, wp, uEnd } = site;
+  c.save(); siteFrame(c);
+  c.fillStyle = 'rgba(0,0,0,0.12)'; rr(c, u0 + 3 * U, -wn + 4 * U, u1 - u0, wn + wp, 10 * U); c.fill();
+  c.fillStyle = '#e2c48e'; rr(c, u0, -wn, u1 - u0, wn + wp, 10 * U); c.fill();
+  for (let i = 0; i < 70; i++){
+    c.fillStyle = R() < 0.5 ? 'rgba(160,110,50,0.25)' : 'rgba(255,245,220,0.4)';
+    circle(c, u0 + R() * (u1 - u0), -wn + R() * (wn + wp), (1 + R() * 2) * U); c.fill();
+  }
+  // dirt road and turning area
+  c.fillStyle = '#caa46a';
+  c.fillRect(u0 - 1 * U, -ROAD_HALF * U, uEnd - u0, ROAD_HALF * 2 * U);
+  circle(c, uEnd, 0, (ROAD_HALF + 5) * U); c.fill();
+  c.strokeStyle = 'rgba(120,80,40,0.3)'; c.lineWidth = 2 * U; c.setLineDash([3 * U, 3 * U]);
+  for (const w of [-LANE - 5, -LANE + 5, LANE - 5, LANE + 5]){ c.beginPath(); c.moveTo(u0, w * U); c.lineTo(uEnd, w * U); c.stroke(); }
+  c.setLineDash([]);
+  // hole and spoil heap
+  if (ex){
+    c.fillStyle = '#6b4423'; c.beginPath(); c.ellipse(ex.hole.u, ex.hole.w, 13 * U, 10 * U, 0, 0, TAU); c.fill();
+    c.fillStyle = '#4a2e17'; c.beginPath(); c.ellipse(ex.hole.u + 1 * U, ex.hole.w + 1 * U, 9 * U, 6.5 * U, 0, 0, TAU); c.fill();
+    const hp = ex.heap;
+    c.fillStyle = '#8b5a2b'; circle(c, hp.u, hp.w, 13 * U); c.fill();
+    c.fillStyle = '#a06a35'; circle(c, hp.u - 3 * U, hp.w - 3 * U, 8 * U); c.fill();
+    c.fillStyle = '#b77d42'; circle(c, hp.u - 5 * U, hp.w - 5 * U, 3.5 * U); c.fill();
+  }
+  // building foundation
+  if (site.bld){
+    const b = site.bld;
+    c.fillStyle = 'rgba(0,0,0,0.15)'; rr(c, b.u0 + 2 * U, b.w0 + 3 * U, b.u1 - b.u0, b.w1 - b.w0, 3 * U); c.fill();
+    c.fillStyle = '#b8b4ad'; rr(c, b.u0, b.w0, b.u1 - b.u0, b.w1 - b.w0, 3 * U); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 1 * U;
+    for (let u = b.u0 + 8 * U; u < b.u1; u += 8 * U){ c.beginPath(); c.moveTo(u, b.w0); c.lineTo(u, b.w1); c.stroke(); }
+  }
+  // pallet of blocks
+  if (site.stack){
+    const s = site.stack;
+    c.fillStyle = '#9c6a3a'; rr(c, s.u - 13 * U, s.w - 13 * U, 26 * U, 26 * U, 2 * U); c.fill();
+    c.strokeStyle = '#7a4f28'; c.lineWidth = 1.2 * U;
+    for (let k = -1; k <= 1; k++){ c.beginPath(); c.moveTo(s.u - 13 * U, s.w + k * 8 * U); c.lineTo(s.u + 13 * U, s.w + k * 8 * U); c.stroke(); }
+    [[-5, -5, 0], [5, -5, 1], [-5, 5, 2], [5, 5, 3], [0, 0, 4]].forEach(([du, dw, i]) => {
+      c.fillStyle = TOY[i]; rr(c, s.u + (du - 4.5) * U - (i === 4 ? 1.5 * U : 0), s.w + (dw - 4.5) * U - (i === 4 ? 1.5 * U : 0), 9 * U, 9 * U, 1.5 * U); c.fill();
+    });
+  }
+  // site office
+  if (site.cabin){
+    const k = site.cabin;
+    c.fillStyle = 'rgba(0,0,0,0.18)'; rr(c, k.u - 14 * U, k.w - 8 * U, 30 * U, 18 * U, 2 * U); c.fill();
+    c.fillStyle = '#2d6cdf'; rr(c, k.u - 16 * U, k.w - 10 * U, 32 * U, 20 * U, 2 * U); c.fill();
+    c.fillStyle = '#5b8def'; c.fillRect(k.u - 14 * U, k.w - 8 * U, 28 * U, 5 * U);
+    c.fillStyle = '#f4f4f4'; c.fillRect(k.u - 16 * U, k.w - 1 * U, 32 * U, 2 * U);
+  }
+  // fence with a gap for the road
+  const gap = (ROAD_HALF + 3) * U;
+  c.beginPath(); c.moveTo(u0, gap); c.lineTo(u0, wp); c.lineTo(u1, wp); c.lineTo(u1, -wn); c.lineTo(u0, -wn); c.lineTo(u0, -gap);
+  c.lineJoin = 'round'; c.lineCap = 'round';
+  c.strokeStyle = '#f4f4f4'; c.lineWidth = 4 * U; c.stroke();
+  c.save(); c.setLineDash([6 * U, 6 * U]); c.strokeStyle = '#f26b1d'; c.lineWidth = 4 * U; c.stroke(); c.restore();
+  c.fillStyle = '#555';
+  const posts = [[u0, gap], [u0, wp], [u1, wp], [u1, -wn], [u0, -wn], [u0, -gap]];
+  for (const [u, w] of posts){ circle(c, u, w, 2.6 * U); c.fill(); }
+  c.lineCap = 'butt';
+  c.restore();
+}
+
+/* ================= trains ================= */
+const trains = [];
+const SPEEDS = [42, 100];
+let speedIdx = 0, going = true, nightT = 0, night = 0;
+const trainLen = tr => tr.lenU * U;
+
+function makeTrain(){
+  const used = new Set(trains.map(t => t.color));
+  const color = pick(ENGINE_COLORS.filter(c => !used.has(c))) || pick(ENGINE_COLORS);
+  const nW = 1 + Math.floor(Math.random() * 3);
+  const cars = [{ e: 1, len: 62, jump: 0 }];
+  for (let i = 0; i < nW; i++) cars.push({ e: 0, len: 48, color: pick(WAGON_COLORS), animal: pick(ANIMALS), jump: 0 });
+  const lenU = cars.reduce((a, c) => a + c.len, 0) + (cars.length - 1) * GAP;
+  return { color, cars, lenU, head: 0, v: 0, pause: 0, cool: 0, drag: 0, dragV: 0, bounce: 0, pitch: rand(0.82, 1.22), smokeT: 0, geo: [] };
+}
+function addTrain(){
+  if (trains.length >= 7) return null;
+  const nt = makeTrain(), L = trainLen(nt), m = 34 * U;
+  if (!trains.length){ nt.head = mod(station.s - 80 * U); trains.push(nt); computeGeo(nt); return nt; }
+  const s = [...trains].sort((a, b) => mod(a.head) - mod(b.head));
+  let best = -1, bestHead = 0;
+  for (let i = 0; i < s.length; i++){
+    const B = s[i], A = s[(i + 1) % s.length];
+    const d = s.length === 1 ? TL : mod(A.head - B.head);
+    const free = d - trainLen(A), spare = free - L - 2 * m;
+    if (spare > best){ best = spare; bestHead = B.head + free / 2 + L / 2; }
+  }
+  if (best < 0) return null;
+  nt.head = mod(bestHead); trains.push(nt); computeGeo(nt); return nt;
+}
+function computeGeo(tr){
+  let off = 0; tr.geo.length = 0;
+  for (const car of tr.cars){
+    const len = car.len * U, f = tr.head - off, b = f - len, P = at(f), Q = at(b);
+    tr.geo.push({ x: (P.x + Q.x) / 2, y: (P.y + Q.y) / 2, a: Math.atan2(P.y - Q.y, P.x - Q.x), f, b, len, car });
+    off += len + GAP * U;
+  }
+}
+function pushFrom(tr, delta){
+  if (trains.length < 2 || !delta) return;
+  const s = [...trains].sort((a, b) => mod(a.head) - mod(b.head)), n = s.length, i0 = s.indexOf(tr), m = 10 * U;
+  let P = tr;
+  for (let k = 1; k < n; k++){
+    if (delta > 0){
+      const A = s[(i0 + k) % n]; if (A.drag) break;
+      const need = trainLen(A) + m;
+      if (mod(A.head - P.head) < need){ A.head = mod(P.head + need); A.dragV = Math.max(A.dragV, tr.dragV); } else break;
+      P = A;
+    } else {
+      const B = s[(i0 - k + n) % n]; if (B.drag) break;
+      const need = trainLen(P) + m;
+      if (mod(P.head - B.head) < need){ B.head = mod(P.head - need); B.dragV = Math.max(B.dragV, tr.dragV); } else break;
+      P = B;
+    }
+  }
+}
+function tootTrain(tr){
+  sToot(tr.pitch); tr.bounce = 0.6;
+  const g = tr.geo[0]; if (!g) return;
+  for (let i = 0; i < 3; i++) fx.push({ t: 'txt', ch: pick(['♪', '♫']), x: g.x + rand(-10, 10) * U, y: g.y, vx: rand(-25, 25) * U, vy: rand(-70, -45) * U, life: 0, max: 1.3, size: rand(20, 28) * U, col: pick(ENGINE_COLORS), font: 'bold' });
+  for (const car of tr.cars) if (!car.e) car.jump = 0.5 + Math.random() * 0.2;
+}
+function drawEngine(c, L, color){
+  const Wd = WID * U, cabL = L * 0.36;
+  c.fillStyle = '#2b2b2b';
+  for (const wx of [-0.32, 0, 0.32]) { rr(c, wx * L - 5 * U, -Wd / 2 - 3 * U, 10 * U, Wd + 6 * U, 3 * U); c.fill(); }
+  c.fillStyle = color; rr(c, -L / 2, -Wd / 2, L, Wd, 7 * U); c.fill();
+  c.fillStyle = shade(color, -0.25); rr(c, -L / 2, -Wd / 2, cabL, Wd, 6 * U); c.fill();
+  c.fillStyle = shade(color, 0.28); rr(c, -L / 2 + 3 * U, -Wd / 2 + 3 * U, cabL - 6 * U, Wd - 6 * U, 4 * U); c.fill();
+  c.fillStyle = shade(color, 0.12); rr(c, -L / 2 + cabL + 3 * U, -Wd * 0.33, L - cabL - 8 * U, Wd * 0.66, Wd * 0.33); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.35)'; rr(c, -L / 2 + cabL + 7 * U, -Wd * 0.24, L - cabL - 18 * U, Wd * 0.13, 3 * U); c.fill();
+  const dx = -L / 2 + cabL + (L - cabL) * 0.34;
+  c.fillStyle = '#f2c14e'; circle(c, dx, 0, 5 * U); c.fill();
+  c.strokeStyle = '#b8862b'; c.lineWidth = 1.2 * U; c.stroke();
+  c.fillStyle = '#222'; circle(c, L / 2 - 12 * U, 0, 6.5 * U); c.fill();
+  c.fillStyle = '#555'; circle(c, L / 2 - 12 * U, 0, 3.4 * U); c.fill();
+  c.fillStyle = '#3b2b20'; rr(c, L / 2 - 3 * U, -Wd / 2 + 2 * U, 5 * U, Wd - 4 * U, 2 * U); c.fill();
+  c.fillStyle = '#fff3b0'; circle(c, L / 2 + 0.5 * U, 0, 2.6 * U); c.fill();
+}
+function drawWagon(c, L, color){
+  const Wd = WID * U;
+  c.fillStyle = '#2b2b2b';
+  for (const wx of [-0.28, 0.28]) { rr(c, wx * L - 5 * U, -Wd / 2 - 3 * U, 10 * U, Wd + 6 * U, 3 * U); c.fill(); }
+  c.fillStyle = shade(color, -0.12); rr(c, -L / 2, -Wd / 2, L, Wd, 6 * U); c.fill();
+  c.fillStyle = color; rr(c, -L / 2 + 1.5 * U, -Wd / 2 + 1.5 * U, L - 3 * U, Wd - 3 * U, 5 * U); c.fill();
+  c.fillStyle = shade(color, -0.22); rr(c, -L / 2 + 5 * U, -Wd / 2 + 5 * U, L - 10 * U, Wd - 10 * U, 4 * U); c.fill();
+}
+function drawTrain(c, tr, time){
+  const G = tr.geo, speed = tr.drag ? tr.dragV : tr.v;
+  c.strokeStyle = '#4a3322'; c.lineWidth = 4 * U; c.lineCap = 'round';
+  for (let k = 0; k < G.length - 1; k++){
+    const a = at(G[k].b + 1 * U), b = at(G[k + 1].f - 1 * U);
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+  }
+  c.lineCap = 'butt';
+  const sc = 1 + Math.sin(tr.bounce * 22) * tr.bounce * 0.22;
+  for (let k = G.length - 1; k >= 0; k--){
+    const g = G[k];
+    c.save(); c.translate(g.x, g.y); c.rotate(g.a);
+    c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, -g.len / 2 + 2 * U, -WID * U / 2 + 4 * U, g.len, WID * U, 7 * U); c.fill();
+    c.scale(sc, sc);
+    if (g.car.e) drawEngine(c, g.len, tr.color); else drawWagon(c, g.len, g.car.color);
+    c.restore();
+  }
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `${Math.round(23 * U)}px ${EF}`;
+  const moving = Math.min(1, speed / (40 * U));
+  for (let k = 1; k < G.length; k++){
+    const g = G[k], car = g.car;
+    const bob = Math.sin(time * 9 + k * 1.7) * 1.6 * U * moving;
+    const jump = car.jump > 0 ? Math.sin((1 - car.jump / 0.7) * Math.PI) * 12 * U : 0;
+    c.fillText(car.animal, g.x, g.y - 2 * U + bob - Math.max(0, jump));
+  }
+}
+
+/* ================= road vehicles ================= */
+const VT = {
+  car:     { len: 30, wid: 17, spd: 72 },
+  police:  { len: 32, wid: 17, spd: 76 },
+  bus:     { len: 60, wid: 20, spd: 50 },
+  lorry:   { len: 56, wid: 20, spd: 54 },
+  fire:    { len: 54, wid: 20, spd: 66 },
+  ambulance: { len: 40, wid: 17, spd: 72 },
+  tractor: { len: 32, wid: 19, spd: 30 },
+  digger:  { len: 44, wid: 19, spd: 26 },
+  tipper:  { len: 46, wid: 19, spd: 52 },
+  mixer:   { len: 48, wid: 19, spd: 48 },
+  robber:  { len: 30, wid: 17, spd: 70 },
+};
+const vehicles = [];
+let siteRoute = null;
+const traffic = { want: [0, 0], staples: [], pend: [] }; // per lane: how many to keep; the special types; who's on the way
+const rob = { v: null, cop: null, phase: '', t: 0, figs: [], next: 200, sirT: 0, fb: { robber: 0, cop: 0 } };
+const xing = { active: false, bar: 0, bellT: 0, anyInZone: false, waiting: false, waitT: 0, hold: false, holdT: 0, went: false };
+function colorFor(t){
+  switch (t){
+    case 'car': return pick(CAR_COLORS);
+    case 'bus': return pick(['#e63946', '#ffbe0b', '#2a9d8f']);
+    case 'lorry': return pick(['#3a86ff', '#e63946', '#2a9d8f', '#8338ec']);
+    case 'tipper': return pick(['#fb8500', '#3a86ff', '#ffbe0b']);
+    case 'mixer': return pick(['#e63946', '#2a9d8f', '#3a86ff']);
+    case 'tractor': return pick(['#2e9e45', '#d62828', '#3a86ff']);
+    default: return '#f4f4f4';
+  }
+}
+const laneSeg = i => ({ P: LANES[i], start: 0, len: LANES[i].L, keys: [['L' + i, 0]] });
+function makeVehicle(type, route, s, lane){
+  const v = { type, half: VT[type].len / 2, route, seg: 0, s, v: 0, color: colorFor(type), bounce: 0, siren: 0, hold: 0, holdMax: 0, tip: 0, load: 1, drum: Math.random() * 10, keys: [], x: -999, y: -999, a: 0,
+    lane, age: 0, pull: 0 };
+  vehicles.push(v); return v;
+}
+function spawnVehicles(){
+  vehicles.length = 0; siteRoute = null;
+  const mk = (type, route, s, lane) => makeVehicle(type, route, s, lane);
+  const L0 = LANES[0].L, L1 = LANES[1].L;
+  const cap0 = clamp(Math.floor(L0 / (160 * U)), 2, 7);
+  const list0 = ['bus', 'car', 'ambulance', 'fire', 'tractor', 'lorry', 'car'].slice(0, cap0);
+  list0.forEach((t, i) => mk(t, [laneSeg(0)], i * L0 / list0.length + 20 * U, 0));
+  const siteTypes = spur ? ['tipper', 'mixer', 'tipper'] : ['tipper', 'mixer'];
+  const others = ['car', 'police', 'digger', 'car', 'car'];
+  const cap1 = clamp(Math.floor(L1 / (160 * U)), 2, 8);
+  const slots = [];
+  let si = 0, oi = 0;
+  while (slots.length < cap1 && (si < siteTypes.length || oi < others.length)){
+    if (si < siteTypes.length && (slots.length % 2 === 0 || oi >= others.length)) slots.push(['site', siteTypes[si++]]);
+    else if (oi < others.length) slots.push(['lane', others[oi++]]);
+    else slots.push(['site', siteTypes[si++]]);
+  }
+  if (spur){
+    const m1 = x => ((x % L1) + L1) % L1;
+    siteRoute = [
+      { P: LANES[1], start: spur.sExitL, len: m1(spur.sEntryL - spur.sExitL), keys: [['L1', spur.sExitL]] },
+      { P: spur.CE, start: 0, len: spur.CE.L, keys: [['L1', spur.sEntryL], ['SI', -spur.CE.L]], turn: true },
+      { P: spur.SI, start: 0, len: spur.SI.L, keys: [['SI', 0]] },
+      { P: spur.UT, start: 0, len: spur.UT.L, keys: [['SI', spur.SI.L], ['SO', -spur.UT.L]], turn: true },
+      { P: spur.SO, start: 0, len: spur.SO.L, keys: [['SO', 0]], hold: true },
+      { P: spur.CX, start: 0, len: spur.CX.L, keys: [['SO', spur.SO.L], ['L1', spur.sExitL - spur.CX.L]], turn: true, gate: true },
+    ];
+  }
+  const base = spur ? spur.sExitL + 70 * U : 0, span = L1 - 150 * U;
+  slots.forEach(([kind, t], i) => {
+    const sL = base + i * span / slots.length;
+    if (kind === 'site' && siteRoute) mk(t, siteRoute, ((sL - spur.sExitL) % L1 + L1) % L1);
+    else mk(t, [laneSeg(1)], sL % L1, 1);
+  });
+  for (const v of vehicles) posVehicle(v);
+  // the side roads keep each lane topped up to what it started with, and bring back the special ones that drive off
+  traffic.want = [0, 1].map(i => vehicles.filter(v => v.lane === i).length);
+  traffic.staples = [...new Set(vehicles.filter(v => v.lane !== undefined && !['car', 'tractor', 'digger'].includes(v.type)).map(v => v.type))];
+  traffic.pend = [];
+  for (const jn of sides) jn.busy = null;
+  Object.assign(rob, { v: null, cop: null, phase: '', t: 0, figs: [], next: rand(150, 240) });
+}
+function posVehicle(v){
+  const seg = v.route[v.seg], q = pAt(seg.P, seg.start + v.s);
+  v.x = q.x; v.y = q.y; v.a = q.a;
+  if (v.pull > 0){ const o = ease(v.pull) * 19 * U; v.x += Math.sin(q.a) * o; v.y -= Math.cos(q.a) * o; } // pulled over to the kerb (on its left)
+}
+// where a vehicle is in each key it's in: [key, position, mode] (see makeSide for the modes)
+function vKeys(v){
+  const seg = v.route[v.seg];
+  return seg.keys.map(([k, off, mode]) => { let ks = mode === 'fix' ? off : off + v.s; const L = KEYLEN[k]; if (L) ks = ((ks % L) + L) % L; return [k, ks, mode]; });
+}
+// is a stretch of a key clear? Nobody within `behind` before s0, or on it up to `ahead` past it (allowing for their length)
+function laneGap(k, s0, behind, ahead, v, skip){
+  const L = KEYLEN[k];
+  for (const o of vehicles){
+    if (o === v || o === skip) continue;
+    for (const [kk, ks] of o.keys){
+      if (kk !== k) continue;
+      if (wrap(s0 - ks, L) < behind || wrap(ks - s0, L) < ahead + (o.half + 20) * U) return false;
+    }
+  }
+  return true;
+}
+// only the vehicle at the front of a queue can have the junction (one behind holding it would wait for ever)
+function frontOf(v, k, sEnd){
+  const e = v.keys.find(x => x[0] === k); if (!e) return true;
+  const L = KEYLEN[k], dist = ks => L ? wrap(sEnd - ks, L) : sEnd - ks, d0 = dist(e[1]);
+  for (const o of vehicles){
+    if (o === v) continue;
+    for (const [kk, ks] of o.keys) if (kk === k){ const d = dist(ks); if (d >= 0 && d < d0) return false; }
+  }
+  return true;
+}
+const gapBehind = () => (90 + 40 * (speedIdx ? 1.6 : 1)) * U;
+// coming in off the map: wait at the give-way line for the junction, a gap in the lane it joins,
+// and (turning right into the inner lane) a gap in the outer lane it crosses
+function entryGate(v, jn, li){
+  if (jn.busy && jn.busy !== v) return false;
+  if (v.jres === jn) return true;
+  if (!frontOf(v, 'I' + jn.id, jn.XI.len)) return false;
+  const seg = jn.into[li], beh = gapBehind(), sk = v.robber ? rob.cop : null;
+  if (li === 0 && !laneGap('L0', jn.sM[0] - seg.len, beh, seg.len, v, sk)) return false;
+  if (li === 1 && !(laneGap('L0', jn.cI, beh, 0, v, sk) && laneGap('L1', jn.sM[1] - seg.len, beh, seg.len, v, sk))) return false;
+  jn.busy = v; v.jres = jn; return true;
+}
+// turning right off the inner lane: wait for the junction, a gap in the outer lane, and anyone turning off that
+function exitGate(v, jn){
+  if (jn.busy && jn.busy !== v) return false;
+  if (v.jres === jn) return true;
+  if (!frontOf(v, 'L1', jn.sX[1])) return false;
+  if (!laneGap('L0', jn.cO, gapBehind(), 0, v)) return false;
+  if (vehicles.some(o => o !== v && o.route[o.seg] === jn.out[0])) return false;
+  jn.busy = v; v.jres = jn; return true;
+}
+function leaveChance(v){
+  if (v.mustLeave) return 1;
+  if (v.extra || v.chase || v.age < 20 || v.siren > 0 || v.washGo || v.wash > 0 || v.yieldTo) return 0;
+  return v.type === 'tractor' || v.type === 'digger' ? 0.6 : 0.2; // slow ones more often, so the queue behind them clears
+}
+function laneClear(v, next){
+  const L1 = KEYLEN.L1, g0 = ((spur.sExitL - spur.CX.L) % L1 + L1) % L1;
+  for (const o of vehicles){
+    if (o === v) continue;
+    for (const [k, ks] of o.keys){
+      if (k !== 'L1') continue;
+      const behind = ((g0 - ks) % L1 + L1) % L1, ahead = ((ks - g0) % L1 + L1) % L1;
+      if (behind < 110 * U || ahead < (o.half + 40) * U) return false;
+    }
+  }
+  return true;
+}
+function startHold(v){
+  if (v.type !== 'tipper' && v.type !== 'mixer') return;
+  if (v.called){ v.waiting = 20; sHonk(); return; } // one he called waits for him to say go (tap it or its sign)
+  goJob(v);
+}
+function goJob(v){ // tip the sand or pour the concrete
+  v.waiting = 0; v.hold = v.holdMax = 3.6; v.done = false;
+  if (v.type === 'tipper') sTip(); else sPour();
+}
+// tapping a site truck in the site: it gets its job done now and hurries off
+function sendOff(v){
+  sHonk(); v.hurry = 6;
+  if (v.waiting > 0){ goJob(v); return; }
+  if (v.hold > 0.8){
+    if (v.type === 'tipper' && v.load > 0){ const p = dumpPile(), big = v.called ? 2 : 1; p.s = Math.min(22 + 4 * big, p.s + v.load * 8 * big); v.load = 0; sTip(); }
+    v.hold = 0.8;
+  }
+}
+function holdFx(v, dt){
+  const el = v.holdMax - v.hold, dx = Math.cos(v.a), dy = Math.sin(v.a);
+  const rx = v.x - dx * v.half * U, ry = v.y - dy * v.half * U, big = v.called ? 2 : 1;
+  if (v.type === 'tipper'){
+    v.tip = Math.min(1, el / 0.9, v.hold / 0.8);
+    if (v.tip > 0.6 && v.load > 0){
+      v.load = Math.max(0, v.load - dt * 0.55);
+      if (site){ const p = dumpPile(); p.s = Math.min(22 + 4 * big, p.s + dt * 3.5 * big); }
+      if (Math.random() < 0.6 * big) fx.push({ t: 'dot', x: rx, y: ry, vx: -dx * rand(20, 50) * U + rand(-12, 12) * U, vy: -dy * rand(20, 50) * U + rand(-12, 12) * U, life: 0, max: 0.6, r: rand(1.5, 3) * U, col: pick(['#e9c46a', '#d4a64a', '#f4d58d']) });
+    }
+  } else if (v.type === 'mixer'){
+    if (Math.random() < 0.5 * big) fx.push({ t: 'dot', x: rx, y: ry, vx: -dx * rand(15, 35) * U + rand(-8, 8) * U, vy: -dy * rand(15, 35) * U + rand(-8, 8) * U, life: 0, max: 0.6, r: rand(1.5, 3) * U, col: pick(['#9a9a9a', '#b5b5b5']) });
+  }
+  if (!v.done && v.hold - dt <= 0){
+    v.done = true;
+    if (v.type === 'mixer') for (let i = 0; i < 2 * big; i++) addBlock(nextCol(), true);
+    if (v.called) jobDone(v);
+  }
+}
+// job signs: bring the next tipper or mixer to the site (beacon flashing, a bit quicker, a bigger load)
+function callTruck(type){
+  if (!siteRoute) return null;
+  const list = vehicles.filter(v => v.route === siteRoute && v.type === type);
+  if (!list.length) return null;
+  let v = list.find(o => o.called);
+  if (!v){
+    // soonest to arrive: already tipping, then on the way in, then round the loop
+    const rank = o => o.seg === 4 ? (o.hold > 0 || o.waiting > 0 ? 3e6 : -1e6 + o.s) : o.seg >= 1 && o.seg <= 3 ? 2e6 + o.seg * 1e5 + o.s : o.seg === 0 ? 1e6 + o.s : o.s;
+    v = list.reduce((a, b) => rank(b) > rank(a) ? b : a);
+  }
+  v.called = true; if (v.type === 'tipper' && !(v.seg === 4 && v.hold > 0)) v.load = 1;
+  return v;
+}
+function jobDone(v){
+  v.called = false; sCheer(); sparkle(v.x, v.y, 24); emoji(v.x, v.y - 16 * U, '⭐', 3, 22);
+  const sg = signs.find(s => s.kind === (v.type === 'tipper' ? 'tip' : 'mix'));
+  if (sg) sg.bounce = 0.6;
+}
+function updateVehicles(dt){
+  const spMul = speedIdx ? 1.6 : 1;
+  const idx = {};
+  for (const v of vehicles){ v.keys = vKeys(v); for (const [k, ks] of v.keys) (idx[k] = idx[k] || []).push([v, ks]); }
+  makeWay(dt);
+  const closed = xing.active || xing.bar > 0.02;
+  let anyZone = false, anyWait = false;
+  for (const v of vehicles){
+    const T = VT[v.type], seg = v.route[v.seg];
+    v.bounce = Math.max(0, v.bounce - dt); v.siren = Math.max(0, v.siren - dt);
+    v.drum += dt * (v.hold > 0 && v.type === 'mixer' ? 5 : 1.2);
+    v.hurry = Math.max(0, (v.hurry || 0) - dt);
+    v.age += dt; v.stall = Math.max(0, (v.stall || 0) - dt); v.stallCool = Math.max(0, (v.stallCool || 0) - dt);
+    let want = going ? T.spd * U * spMul * (v.called ? 1.35 : 1) * (v.hurry > 0 ? 1.4 : 1) * (v.chase && rob.phase === 'chase' ? 1.8 : 1) * (v.tired ? 0.5 : 1) : 0;
+    if (v.yieldTo || v.arrest || v.stall > 0 || v.parked || v.puffed) want = 0;
+    if (seg.turn) want = Math.min(want, 34 * U * spMul);
+    if (v.waiting > 0){ v.waiting -= dt; want = 0; if (v.waiting <= 0) goJob(v); }
+    else if (v.hold > 0){ v.hold -= dt; want = 0; holdFx(v, dt); }
+    else if (v.tip > 0) v.tip = Math.max(0, v.tip - dt * 1.5);
+    for (const [k, ks, mode] of v.keys){
+      if (mode) continue; // a ghost it leaves for traffic in a lane it's turning out of or across
+      const L = KEYLEN[k], list = idx[k];
+      let best = 1e9, bh = 0;
+      for (const [o, oks] of list){
+        if (o === v) continue;
+        if ((o.yieldTo === v || o.parked || (o.puffed && !v.chase)) && o.pull > 0.8) continue; // pulled over to let it by, parked, or the robber out of puff (not for the police car after him)
+        let d = oks - ks; if (L) d = ((d % L) + L) % L;
+        if (d > 0 && d < best){ best = d; bh = o.half; }
+      }
+      if (best < 1e9){ const gap = best - (v.half + bh) * U - 8 * U; want = Math.min(want, Math.max(0, gap * 2.5)); }
+    }
+    if (spur){
+      for (const [k, ks] of v.keys){
+        if (k !== 'SI' && k !== 'SO') continue;
+        const stop = (k === 'SI' ? spur.SIstart : spur.uEnd) - (BAR_R + v.half + 5) * U, to = stop - ks;
+        if (to >= -1 && closed){ want = Math.min(want, Math.max(0, to * 3)); if (to < 5 * U && v.v < 2 * U) anyWait = true; }
+      }
+    }
+    const next = v.route[(v.seg + 1) % v.route.length];
+    if (next.gate){
+      const to = seg.len - v.s;
+      if (!(next.gate === true ? laneClear(v, next) : to < 40 * U && next.gate(v))) want = Math.min(want, Math.max(0, to * 3));
+    }
+    // car wash: about 2 in 5 outer-lane vehicles pull in, stop in the middle for a scrub, and come out sparkling
+    if (carWash && v.route.length === 1 && v.route[0].P === LANES[0]){
+      if (v.wash > 0){
+        v.wash -= dt; want = 0; carWash.busy = 0.3;
+        if (Math.random() < dt * 14) bubbles(v.x, v.y, 2, VT[v.type].len * U * 0.45);
+        if (v.wash <= 0){ v.shine = 5; sparkle(v.x, v.y, 14); }
+      } else {
+        const L = LANES[0].L, dn = ((carWash.s0 - v.s) % L + L) % L;
+        if (v.washD !== undefined && v.washD > 120 * U && dn <= 120 * U) v.washGo = going && Math.random() < 0.4;
+        v.washD = dn;
+        if (v.washGo && dn < 130 * U){
+          want = Math.min(want, Math.max(0, dn * 3));
+          if (dn < 1 * U && v.v < 3 * U){ v.washGo = false; v.wash = 3.4; sSpray(); }
+        }
+      }
+    }
+    if (v.shine > 0){ v.shine -= dt; if (Math.random() < dt * 6) sparkle(v.x + rand(-12, 12) * U, v.y + rand(-8, 8) * U, 1); }
+    if (v === rob.cop && v.route.length === 1) want = Math.min(want, copHold(v));
+    // side roads: now and then a vehicle decides (140U out) to turn off the map
+    let exitD = -1;
+    if (v.route.length === 1 && v.lane !== undefined && sides.length){
+      const li = v.lane, L = KEYLEN['L' + li], ex = v.exD || (v.exD = []);
+      for (const jn of sides){
+        const d = wrap(jn.sX[li] - v.s, L);
+        const due = ex[jn.id] > 140 * U && d <= 140 * U ? Math.random() < leaveChance(v) : v.mustLeave && d > 30 * U && d <= 140 * U;
+        if (!v.exit && due){ v.exit = jn; v.exWait = 0; }
+        ex[jn.id] = d;
+      }
+      if (v.exit){
+        exitD = ex[v.exit.id];
+        if (exitD > 150 * U || v.yieldTo || (v.chase && !v.mustLeave)){ v.exit = null; v.jres = null; exitD = -1; }
+        else if (li === 1 && !(exitD < 40 * U && exitGate(v, v.exit))){
+          want = Math.min(want, Math.max(0, exitD * 3));
+          // waited long enough for a gap: carry on round instead (unless it's taking the robber away)
+          if (v.v < 2 * U && exitD < 4 * U && (v.exWait += dt) > 3 && !v.mustLeave){ v.exit = null; exitD = -1; }
+        }
+      }
+    }
+    v.v = want < v.v ? Math.max(want, v.v - 240 * U * dt) : Math.min(want, v.v + 60 * U * dt);
+    let adv = v.v * dt;
+    if (exitD >= 0 && adv >= exitD && (v.lane === 0 || v.jres === v.exit)){
+      v.route = [v.exit.out[v.lane], v.exit.XO]; v.seg = 0; v.s = adv - exitD; adv = 0;
+      v.leaving = true; v.exit = null; v.washGo = false;
+    }
+    v.s += adv;
+    let guard = 0;
+    while (v.s >= v.route[v.seg].len && guard++ < 6){
+      const done = v.route[v.seg];
+      v.s -= done.len;
+      if (done.jn && done.jn.busy === v){ done.jn.busy = null; v.jres = null; }
+      if (done.gone){ v.gone = true; v.s = done.len; break; } // off the edge of the map
+      if (done.join !== undefined){ v.route = [laneSeg(done.join)]; v.seg = 0; v.s = wrap(done.joinS + v.s, KEYLEN['L' + done.join]); v.exD = null; break; }
+      v.seg = (v.seg + 1) % v.route.length;
+      if (v.route[v.seg].hold) startHold(v);
+    }
+    if (v.type === 'tipper' && v.route === siteRoute && v.seg === 0 && v.s > v.route[0].len * 0.5) v.load = 1;
+    posVehicle(v);
+    // is it on the level crossing?
+    v.inZone = false;
+    if (spur){
+      const ks = vKeys(v); let r = null;
+      for (const [k, s] of ks){ if (k === 'SI'){ r = spur.SIstart - s; break; } if (k === 'SO') r = s - spur.uEnd; }
+      if (r !== null && Math.abs(r) < (BAR_R + v.half) * U) v.inZone = true;
+    }
+    if (v.inZone) anyZone = true;
+  }
+  xing.anyInZone = anyZone; xing.waiting = anyWait;
+  for (let i = vehicles.length - 1; i >= 0; i--) if (vehicles[i].gone) vehicles.splice(i, 1);
+  // a junction is only held by someone on their way through it
+  const holds = (v, jn) => !v.gone && v.jres === jn && (v.exit === jn || v.route.some(sg => sg === jn.XI || sg === jn.out[1] || jn.into.includes(sg)));
+  for (const jn of sides) if (jn.busy && !holds(jn.busy, jn)){ if (jn.busy.jres === jn) jn.busy.jres = null; jn.busy = null; }
+}
+// A police car chasing the robber: whatever is just ahead of it in its lane pulls over to the kerb (on its left)
+// and waits there till the police car is past. The police car drives by anything pulled right over.
+function makeWay(dt){
+  for (const v of vehicles){
+    const c = v.yieldTo;
+    // back out once the police car's by (or it's stopped chasing well behind): never while it's alongside
+    if (c && (c.gone || c.route.length !== 1 || v.route[v.seg].turn || passedBy(c, v) || (!c.chase && !alongside(c, v)))) v.yieldTo = null;
+    v.pull = clamp(v.pull + (v.yieldTo || v.parked || v.puffed ? dt * 2.5 : -dt * 1.5), 0, 1);
+  }
+  const c = rob.cop;
+  if (!c || !c.chase || rob.phase !== 'chase' || c.route.length !== 1) return;
+  const [k, ks] = c.keys[0], L = KEYLEN[k];
+  for (const o of vehicles){
+    if (o === c || o.robber || o.yieldTo || o.wash > 0 || o.hold > 0 || o.waiting > 0 || o.jres) continue;
+    if (!(o.route.length === 1 || (o.route === siteRoute && o.seg === 0))) continue;
+    const e = o.keys.find(x => x[0] === k && !x[2]); if (!e) continue;
+    const d = wrap(e[1] - ks, L) - (c.half + o.half) * U;
+    if (!(d > -2 * U && d < 45 * U) || !pullSpotOk(o)) continue;
+    o.yieldTo = c; o.exit = null; o.washGo = false;
+  }
+}
+// Can it pull over to the kerb here? Not into the roadworks, the car wash, a side road, the site road or the bank:
+// there it just carries on (and a police car behind it follows).
+function pullSpotOk(o){
+  const px = o.x + Math.sin(o.a) * 19 * U, py = o.y - Math.cos(o.a) * 19 * U;
+  if ((works && Math.hypot(px - works.x, py - works.y) < 95 * U) || (carWash && inWash(carWash, px, py, 50 * U, (ROAD_HALF + 20) * U))) return false;
+  if (sides.some(jn => Math.hypot(px - jn.x, py - jn.y) < (ROAD_HALF + JR1 + o.half + 8) * U)) return false;
+  if (spur && [spur.CE, spur.CX].some(P => pMinD2(P, px, py, 2) < ((LANE + o.half + 12) * U) ** 2)) return false;
+  if (bank && inBank(px, py, 12 * U)) return false;
+  return true;
+}
+function alongside(c, v){ // is the police car level with it (within a length or so either way)?
+  const [k, ks] = c.keys[0], e = v.keys.find(x => x[0] === k); if (!e) return false;
+  const L = KEYLEN[k], d = wrap(e[1] - ks, L), m = (c.half + v.half) * U + 8 * U;
+  return d < m || d > L - m;
+}
+function passedBy(c, v){
+  const [k, ks] = c.keys[0], e = v.keys.find(x => x[0] === k); if (!e) return true;
+  const L = KEYLEN[k], d = wrap(ks - e[1], L);
+  return d < L / 2 && d > (c.half + v.half) * U + 8 * U;
+}
+
+// For every vehicle that drives off the map, a new one drives in a few seconds later, onto the same lane.
+function updateTraffic(dt){
+  if (!sides.length) return;
+  for (const li of [0, 1]){
+    let n = traffic.pend.filter(p => p.li === li).length;
+    for (const v of vehicles) if (v.lane === li && !v.extra && !v.leaving) n++;
+    for (; n < traffic.want[li]; n++) traffic.pend.push({ li, t: rand(1.5, 5) });
+  }
+  for (let i = traffic.pend.length - 1; i >= 0; i--){
+    const p = traffic.pend[i];
+    if ((p.t -= dt) > 0) continue;
+    if (arrive(arrivalType(), p.li)) traffic.pend.splice(i, 1); else p.t = 0.5;
+  }
+}
+// what drives in: any special one that's gone (the fire engine, ambulance, police car, bus...), otherwise mostly cars
+function arrivalType(){
+  const here = vehicles.filter(v => !v.leaving && !v.extra).map(v => v.type), n = t => here.filter(x => x === t).length;
+  const miss = traffic.staples.filter(t => !n(t));
+  if (miss.length) return pick(miss);
+  const pool = ['car', 'car', 'car', 'car', 'car', 'bus', 'lorry', 'fire', 'ambulance', 'police'].filter(t => t === 'car' || n(t) < 2);
+  for (const t of ['tractor', 'digger']) if (!n(t)) pool.push(t);
+  return pick(pool);
+}
+// a vehicle drives in off the map (at `jn`, or whichever side road has room, or only at `jn`), heading for lane li
+function arrive(type, li, jn, only){
+  const half = VT[type].len / 2;
+  const list = jn ? (only ? [jn] : [jn, ...sides.filter(j => j !== jn)]) : sides.slice().sort(() => Math.random() - 0.5);
+  for (const j of list){
+    const I = 'I' + j.id;
+    if (vehicles.some(o => vKeys(o).some(([k, ks]) => k === I && ks < (o.half + half + 10) * U))) continue;
+    const v = makeVehicle(type, [j.XI, j.into[li]], 0, li);
+    posVehicle(v); v.keys = vKeys(v);
+    return v;
+  }
+  return null;
+}
+
+/* ---------- the robber ---------- */
+// He asked for "a bad guy and the police arrest them", so it's kept silly: a robber in a stripy jumper, a mask and a
+// bobble hat, with a bag of coins. No weapons, nobody hurt, nothing chases anyone but the police.
+// Tapping the police car (or every few minutes, on its own) brings a robber in off a side road, into the police car's
+// lane and ahead of it. The police chase him with the siren going, and everything in between pulls over (makeWay).
+// Tapping his car makes it splutter to a stop for a moment. Once caught he hops out with his hands up, the coins fly
+// out of his bag, and he swaps places with a police officer: he rides off in the back of the police car, and the
+// officer drives his car. They both leave by the next side road, and the police car comes back later.
+function policeInLane(){ return vehicles.find(v => v.type === 'police' && v.route.length === 1 && !v.leaving && !v.extra && v.lane !== undefined) || null; }
+function startRobber(cop){
+  if (rob.v || rob.phase === 'call' || !sides.length) return false;
+  if (!(cop && cop.type === 'police' && cop.route.length === 1 && !cop.leaving && cop.lane !== undefined)) cop = null;
+  const li = cop ? cop.lane : (Math.random() < 0.5 ? 0 : 1), L = KEYLEN['L' + li];
+  // the side road that brings him in soonest, well ahead of the police car
+  let jn = pick(sides);
+  // (and not one it has only just gone past, which would put him behind it)
+  if (cop){ let bd = 1e18; for (const j of sides){ let d = wrap(j.sM[li] - cop.s, L); if (d < 350 * U || d > L - 200 * U) d += L; if (d < bd){ bd = d; jn = j; } } }
+  Object.assign(rob, { v: null, cop, li, jn, phase: 'call', t: 0, sirT: 0, figs: [], ev: {}, fb: { robber: 0, cop: 0 } });
+  if (cop){ cop.chase = true; cop.exit = null; cop.jres = null; cop.siren = 3; }
+  robberIn();
+  return true;
+}
+// he drives in as soon as there's room on a side road (tried every frame, for up to 10 s)
+function robberIn(){
+  const v = arrive('robber', rob.li, rob.jn, !!rob.cop); // (the other side road might be behind the police car)
+  if (!v) return false;
+  v.extra = true; v.robber = true; v.rider = 'robber'; v.loot = true; v.color = '#2b2d42';
+  rob.v = v; rob.jn = sides.find(j => v.route[0] === j.XI); rob.phase = 'in'; rob.t = 0;
+  sSneak();
+  return true;
+}
+// The bank: its alarm rings, he runs out to his car at the kerb, and the police car in the inner lane comes after him
+// (if it's not just gone past; otherwise one comes in off the side road behind the bank).
+function startBankRobbery(){
+  if (!bank || rob.phase || !sides.length) return false;
+  const car = makeVehicle('robber', [laneSeg(1)], bank.sPark, 1);
+  Object.assign(car, { extra: true, robber: true, parked: true, pull: 1, color: '#2b2d42' });
+  posVehicle(car); car.keys = vKeys(car);
+  // (the police car in the inner lane only if it's a way behind the bank: not level with his car, or past it)
+  const L = KEYLEN.L1, p = policeInLane(), dp = p && p.lane === 1 ? wrap(bank.sPark - p.s, L) : -1, cop = dp > 150 * U && dp < L * 0.6 ? p : null;
+  let jn = sides[0], bd = 1e18; // the side road behind the bank, for a police car to come in by
+  for (const j of sides){ const d = wrap(bank.sPark - j.sM[1], L); if (d < bd){ bd = d; jn = j; } }
+  Object.assign(rob, { v: car, cop, li: 1, jn, phase: 'bank', t: 0, sirT: 0, figs: [], ev: {}, fb: { robber: 0, cop: 0 } });
+  if (cop){ cop.chase = true; cop.exit = null; cop.jres = null; cop.siren = 3; }
+  ringBank(4);
+  return true;
+}
+function ringBank(t){ bank.alarm = Math.max(bank.alarm, t); sparkle(bank.x, bank.y, 14); }
+function tapBank(){
+  if (!startBankRobbery()){ ringBank(1.5); sKnock(); } // already being robbed: just the alarm
+}
+// Until the robber is out on the road, the police car chasing him holds back behind where he'll join it,
+// so it's behind him rather than driving straight past while he waits.
+const COP_BACK = 220;
+function copHold(c){
+  if (!['call', 'bank', 'in'].includes(rob.phase) || c.lane !== rob.li) return 1e9;
+  const r = rob.v, s0 = r && r.route.length === 1 ? r.s : rob.jn ? rob.jn.sM[rob.li] : null;
+  if (s0 === null) return 1e9;
+  const L = KEYLEN['L' + c.lane], d = wrap(s0 - c.s, L);
+  if (d > L - 30 * U) return 1e9; // just gone past: too late
+  const to = d - COP_BACK * U;
+  return to > 250 * U ? 1e9 : Math.max(0, to * 2.5);
+}
+function tapRobber(v){
+  if (v.rider === 'cop'){ sHello(); return; } // a police officer's driving it now
+  sGiggle(); v.bounce = 0.6;
+  if ((rob.phase === 'in' || rob.phase === 'chase') && !v.puffed && !(v.stallCool > 0)){ v.stall = 1.4; v.stallCool = 3; for (let i = 0; i < 3; i++) spawnPuff(v.x + rand(-8, 8) * U, v.y + rand(-8, 8) * U); } // splutter, stop
+}
+function updateRobber(dt){
+  if (bank && bank.alarm > 0){
+    bank.alarm -= dt;
+    if ((bank.ringT -= dt) <= 0){ bank.ringT = 0.075; bellHi = !bellHi; tone(bellHi ? 1480 : 1320, 'triangle', 0, 0.002, 0.06, 0.05); }
+  }
+  if (rob.phase === 'call' && !robberIn() && (rob.t += dt) > 10){
+    if (rob.cop) rob.cop.chase = false;
+    Object.assign(rob, { cop: null, phase: '' });
+  }
+  if (!rob.v){
+    if (!rob.phase && going && sides.length && (rob.next -= dt) <= 0){ rob.next = rand(150, 240); if (!startBankRobbery()) startRobber(policeInLane()); }
+    return;
+  }
+  const r = rob.v;
+  if (r.gone || !vehicles.includes(r)){ // he's been taken away
+    if (rob.cop){ rob.cop.chase = false; rob.cop.arrest = false; }
+    Object.assign(rob, { v: null, cop: null, phase: '', figs: [], next: rand(150, 240) });
+    return;
+  }
+  if (rob.cop && (rob.cop.gone || !vehicles.includes(rob.cop))) rob.cop = null;
+  if (going) rob.t += dt;
+  const c = rob.cop;
+  for (const w in rob.fb) rob.fb[w] = Math.max(0, rob.fb[w] - dt);
+  if (rob.phase === 'bank'){ // he runs out of the bank with his bag and jumps in his car
+    const d = bank.door, k = ease((rob.t - 0.3) / 1.1), pk = { x: r.x + Math.sin(r.a) * 12 * U, y: r.y - Math.cos(r.a) * 12 * U };
+    rob.figs = rob.t > 0.3 ? [{ who: 'robber', x: lerp(d.x, pk.x, k), y: lerp(d.y, pk.y, k), pop: Math.min(1, (rob.t - 0.3) / 0.2), walk: true, bag: true, bounce: rob.fb.robber * 0.6 }] : [];
+    if (rob.t > 1.45){ rob.figs = []; r.rider = 'robber'; r.loot = true; r.bounce = 0.5; rob.phase = 'in'; rob.t = 0; sSneak(); }
+    return;
+  }
+  // pulls out from the kerb when there's a gap (the police car holding back for him to leave the bank doesn't count)
+  const skip = rob.phase === 'in' && c && c.lane === r.lane && wrap(r.s - c.s, KEYLEN['L' + r.lane]) > (r.half + c.half + 60) * U ? c : null;
+  if (r.parked && going && laneGap('L' + r.lane, r.s, gapBehind(), 0, r, skip)) r.parked = false;
+  if (rob.phase === 'in' || rob.phase === 'chase'){
+    // no police car about: one comes in right behind him
+    if (!c){ const p = arrive('police', rob.li, rob.jn); if (p){ p.extra = true; p.chase = true; rob.cop = p; } }
+    if (rob.cop){ rob.cop.siren = Math.max(rob.cop.siren, 0.3); if ((rob.sirT -= dt) <= 0){ sSiren('police'); rob.sirT = 2.7; } }
+    if (rob.phase === 'in' && r.route.length === 1 && !r.parked){ rob.phase = 'chase'; rob.t = 0; }
+    if (rob.phase === 'chase'){
+      if (rob.t > 10 && !r.tired) r.tired = true; // out of puff: slower, with smoke
+      // Right out of puff: he pulls over at the next kerb he can and waits there. The traffic goes by and the police
+      // car comes up behind him. (A police car stuck behind traffic that can't pull over, with him stopped again and
+      // again by taps, could otherwise go on for ever.)
+      if (rob.t > 18 && !r.puffed && r.route.length === 1 && pullSpotOk(r)){ r.puffed = true; r.stall = 0; }
+      if ((r.tired || r.stall > 0) && Math.random() < dt * 5) spawnPuff(r.x - Math.cos(r.a) * r.half * U, r.y - Math.sin(r.a) * r.half * U);
+      if (c && c.route.length === 1 && c.lane === r.lane && r.route.length === 1){
+        const gap = wrap(r.s - c.s, KEYLEN['L' + r.lane]) - (r.half + c.half) * U;
+        if (gap < 40 * U){ // right behind him (it follows at about 36U)
+          rob.phase = 'caught'; rob.t = 0; r.arrest = c.arrest = true; c.chase = false; r.stall = 0;
+          r.bounce = 0.6; c.bounce = 0.4; sWhoop(); sparkle(r.x, r.y, 16);
+        }
+      }
+    }
+    return;
+  }
+  if (!c){ r.arrest = false; r.mustLeave = true; rob.figs = []; rob.phase = 'away'; if (r.puffed){ r.puffed = false; r.parked = true; } return; }
+  c.siren = Math.max(c.siren, 0.3); // lights on (no siren) till they're gone
+  if (rob.phase !== 'caught') return;
+  // caught: he hops out with his hands up and walks to the police car; a police officer walks to his car
+  const t = rob.t, ev = rob.ev;
+  const kerb = (v, d) => ({ x: clamp(v.x + Math.sin(v.a) * d, 14 * U, W - 14 * U), y: clamp(v.y - Math.cos(v.a) * d, 18 * U, H - 16 * U) });
+  const A = kerb(r, 22 * U), B = kerb(c, 22 * U), A2 = kerb(r, 36 * U), B2 = kerb(c, 36 * U), k = ease((t - 1.7) / 1.1);
+  rob.figs = [];
+  if (t > 0.25 && t < 2.8) rob.figs.push({ who: 'robber', x: lerp(A.x, B.x, k), y: lerp(A.y, B.y, k), pop: Math.min(1, (t - 0.25) / 0.2), walk: t > 1.7 && t < 2.8, bounce: rob.fb.robber * 0.6 });
+  if (t > 0.45 && t < 2.8) rob.figs.push({ who: 'cop', x: lerp(B2.x, A2.x, k), y: lerp(B2.y, A2.y, k), pop: Math.min(1, (t - 0.45) / 0.2), walk: t > 1.7 && t < 2.8, bounce: rob.fb.cop * 0.6 });
+  if (t > 0.25 && !ev.out){ ev.out = true; sBoing(); r.rider = null; }
+  if (t > 0.45 && !ev.cop){ ev.cop = true; sHello(); }
+  if (t > 0.95 && !ev.loot){ ev.loot = true; r.loot = false; sCoins(); coins(r.x, r.y, 14); emoji(r.x, r.y - 6 * U, '⭐', 2, 20); }
+  if (t > 2.8 && !ev.swap){
+    ev.swap = true; c.rider = 'robber'; r.rider = 'cop'; c.bounce = r.bounce = 0.5; r.tired = false;
+    sClunk(); sCheer(); emoji(c.x, c.y - 10 * U, '⭐', 3, 22); sparkle(c.x, c.y, 20);
+  }
+  if (t > 3.5){ rob.phase = 'away'; rob.figs = []; r.arrest = c.arrest = false; r.mustLeave = c.mustLeave = true; if (r.puffed){ r.puffed = false; r.parked = true; } }
+}
+
+const tyres = (c, xs, Wd, tw, th) => { c.fillStyle = '#222'; tw = (tw || 7) * U; th = (th || 4) * U; for (const x of xs) for (const sy of [-1, 1]){ rr(c, x - tw / 2, sy * Wd / 2 - th / 2, tw, th, 1.5 * U); c.fill(); } };
+const lamps = (c, L, Wd) => { c.fillStyle = '#fff3b0'; circle(c, L / 2 - 1.2 * U, -Wd / 2 + 3 * U, 1.9 * U); c.fill(); circle(c, L / 2 - 1.2 * U, Wd / 2 - 3 * U, 1.9 * U); c.fill(); };
+const cabGlass = (c, L, Wd, cab) => { c.fillStyle = '#bfe3ff'; rr(c, L / 2 - cab * 0.42, -Wd / 2 + 2.5 * U, cab * 0.26, Wd - 5 * U, 1.5 * U); c.fill(); };
+const blink = () => Math.floor(NOW * 7) % 2 === 0;
+const beacons = (v, n) => { const on = v.siren > 0, b = blink(); return [on && b ? '#8fc1ff' : '#1e3a8a', on && !b ? '#8fc1ff' : '#1e3a8a'][n]; };
+const VDRAW = {
+  car(c, L, Wd, v){
+    tyres(c, [-L * 0.3, L * 0.3], Wd);
+    c.fillStyle = v.color; rr(c, -L / 2, -Wd / 2, L, Wd, 6 * U); c.fill();
+    c.fillStyle = '#bfe3ff'; rr(c, L * 0.07, -Wd / 2 + 2 * U, L * 0.2, Wd - 4 * U, 2 * U); c.fill();
+    rr(c, -L * 0.4, -Wd / 2 + 2.5 * U, L * 0.12, Wd - 5 * U, 1.5 * U); c.fill();
+    c.fillStyle = shade(v.color === '#f4f4f4' ? '#dddddd' : v.color, 0.22); rr(c, -L * 0.28, -Wd / 2 + 2 * U, L * 0.35, Wd - 4 * U, 3 * U); c.fill();
+    lamps(c, L, Wd);
+  },
+  police(c, L, Wd, v){
+    VDRAW.car(c, L, Wd, { color: '#f4f4f4' });
+    c.fillStyle = '#1d4ed8'; c.fillRect(-L / 2 + 4 * U, -Wd / 2, L - 8 * U, 2.2 * U); c.fillRect(-L / 2 + 4 * U, Wd / 2 - 2.2 * U, L - 8 * U, 2.2 * U);
+    c.fillStyle = '#ffd23f'; c.fillRect(-L / 2 + 4 * U, -Wd / 2 + 2.2 * U, L - 8 * U, 1 * U); c.fillRect(-L / 2 + 4 * U, Wd / 2 - 3.2 * U, L - 8 * U, 1 * U);
+    const on = v.siren > 0, b = blink();
+    c.fillStyle = on && b ? '#8fc1ff' : '#1e3a8a'; rr(c, -L * 0.14, -Wd / 2 + 2.5 * U, 4 * U, Wd / 2 - 2.5 * U, 1 * U); c.fill();
+    c.fillStyle = on && !b ? '#8fc1ff' : '#1e3a8a'; rr(c, -L * 0.14, 0, 4 * U, Wd / 2 - 2.5 * U, 1 * U); c.fill();
+  },
+  bus(c, L, Wd, v){
+    tyres(c, [-L * 0.32, L * 0.3], Wd, 8, 4);
+    c.fillStyle = v.color; rr(c, -L / 2, -Wd / 2, L, Wd, 5 * U); c.fill();
+    c.fillStyle = shade(v.color, 0.3); rr(c, -L / 2 + 3 * U, -Wd / 2 + 4 * U, L - 10 * U, Wd - 8 * U, 3 * U); c.fill();
+    c.fillStyle = '#bfe3ff';
+    for (let x = -L / 2 + 5 * U; x < L / 2 - 12 * U; x += 8 * U){ c.fillRect(x, -Wd / 2 + 1 * U, 5.5 * U, 2.2 * U); c.fillRect(x, Wd / 2 - 3.2 * U, 5.5 * U, 2.2 * U); }
+    rr(c, L / 2 - 5 * U, -Wd / 2 + 2 * U, 3.5 * U, Wd - 4 * U, 1.5 * U); c.fill();
+    lamps(c, L, Wd);
+  },
+  lorry(c, L, Wd, v){
+    tyres(c, [-L * 0.38, -L * 0.2, L * 0.32], Wd);
+    const cab = L * 0.26;
+    c.fillStyle = '#555'; c.fillRect(-L / 2 + 2 * U, -3 * U, L - 4 * U, 6 * U);
+    c.fillStyle = '#f1f1f1'; rr(c, -L / 2, -Wd / 2, L - cab - 3 * U, Wd, 3 * U); c.fill();
+    c.fillStyle = v.color; c.fillRect(-L / 2 + 2 * U, -Wd / 2 + 2 * U, L - cab - 7 * U, 3 * U); c.fillRect(-L / 2 + 2 * U, Wd / 2 - 5 * U, L - cab - 7 * U, 3 * U);
+    rr(c, L / 2 - cab, -Wd / 2 + 0.5 * U, cab, Wd - 1 * U, 4 * U); c.fill();
+    cabGlass(c, L, Wd, cab); lamps(c, L, Wd);
+  },
+  fire(c, L, Wd, v){
+    tyres(c, [-L * 0.32, L * 0.28], Wd, 8, 4);
+    c.fillStyle = '#d62828'; rr(c, -L / 2, -Wd / 2, L, Wd, 5 * U); c.fill();
+    c.fillStyle = '#ffd23f'; c.fillRect(-L / 2 + 2 * U, -Wd / 2 + 1 * U, L - 4 * U, 1.6 * U); c.fillRect(-L / 2 + 2 * U, Wd / 2 - 2.6 * U, L - 4 * U, 1.6 * U);
+    c.fillStyle = '#c9ccd1'; const ll = L * 0.7;
+    c.fillRect(-L / 2 + 2 * U, -3.5 * U, ll, 1.6 * U); c.fillRect(-L / 2 + 2 * U, 1.9 * U, ll, 1.6 * U);
+    for (let x = -L / 2 + 4 * U; x < -L / 2 + 2 * U + ll; x += 4 * U) c.fillRect(x, -2.5 * U, 1.2 * U, 5 * U);
+    cabGlass(c, L, Wd, L * 0.24);
+    const on = v.siren > 0, b = blink();
+    c.fillStyle = on && b ? '#8fc1ff' : '#1e3a8a'; circle(c, L / 2 - 8 * U, -Wd / 2 + 3 * U, 2.2 * U); c.fill();
+    c.fillStyle = on && !b ? '#8fc1ff' : '#1e3a8a'; circle(c, L / 2 - 8 * U, Wd / 2 - 3 * U, 2.2 * U); c.fill();
+    lamps(c, L, Wd);
+  },
+  tractor(c, L, Wd, v){
+    c.fillStyle = '#222'; rr(c, -L * 0.44, -Wd / 2 - 2.5 * U, L * 0.36, 5.5 * U, 2 * U); c.fill(); rr(c, -L * 0.44, Wd / 2 - 3 * U, L * 0.36, 5.5 * U, 2 * U); c.fill();
+    tyres(c, [L * 0.32], Wd * 0.72, 6, 3.5);
+    c.fillStyle = v.color; rr(c, -L * 0.08, -Wd * 0.22, L * 0.56, Wd * 0.44, 3 * U); c.fill();
+    c.fillStyle = shade(v.color, -0.2); rr(c, -L / 2 + 2 * U, -Wd / 2 + 2 * U, L * 0.44, Wd - 4 * U, 3 * U); c.fill();
+    c.fillStyle = '#f4f4f4'; rr(c, -L / 2 + 4 * U, -Wd / 2 + 4 * U, L * 0.34, Wd - 8 * U, 2 * U); c.fill();
+    c.fillStyle = '#333'; circle(c, L * 0.22, -Wd * 0.1, 1.6 * U); c.fill();
+    c.fillStyle = '#fff3b0'; circle(c, L / 2 - 1.5 * U, -Wd * 0.14, 1.5 * U); c.fill(); circle(c, L / 2 - 1.5 * U, Wd * 0.14, 1.5 * U); c.fill();
+  },
+  digger(c, L, Wd, v){
+    tyres(c, [-L * 0.14, L * 0.2], Wd, 9, 4.5);
+    c.fillStyle = '#d99a00'; rr(c, -L * 0.5 + 4 * U, -2.5 * U, L * 0.4, 5 * U, 2 * U); c.fill();
+    c.fillStyle = '#666'; rr(c, -L * 0.5, -4.5 * U, 6 * U, 9 * U, 2 * U); c.fill();
+    c.fillStyle = '#f4b400'; rr(c, -L * 0.2, -Wd / 2, L * 0.54, Wd, 4 * U); c.fill();
+    c.fillStyle = '#bfe3ff'; rr(c, -L * 0.14, -Wd / 2 + 3 * U, L * 0.24, Wd - 6 * U, 2 * U); c.fill();
+    c.fillStyle = '#e0a100'; rr(c, -L * 0.1, -Wd / 2 + 4.5 * U, L * 0.16, Wd - 9 * U, 1.5 * U); c.fill();
+    c.fillStyle = '#777'; rr(c, L * 0.38, -Wd / 2 - 2 * U, 5 * U, Wd + 4 * U, 2 * U); c.fill();
+    c.fillStyle = '#f4b400'; c.fillRect(L * 0.32, -Wd / 2 + 2 * U, L * 0.07, 2 * U); c.fillRect(L * 0.32, Wd / 2 - 4 * U, L * 0.07, 2 * U);
+    c.fillStyle = blink() ? '#ffb000' : '#a86b00'; circle(c, -L * 0.02, 0, 1.8 * U); c.fill();
+  },
+  ambulance(c, L, Wd, v){ // as in the builder: UK style, yellow and green chequers down the sides, blue lights
+    tyres(c, [-L * 0.3, L * 0.3], Wd, 8, 4);
+    const cab = L * 0.24, box = L - cab - 1 * U, x0 = -L / 2, sq = 3.4 * U;
+    c.fillStyle = '#fbfbf2'; rr(c, x0, -Wd / 2, box, Wd, 4 * U); c.fill();
+    for (let i = 0, x = x0 + 2.5 * U; x < x0 + box - 2.5 * U; i++, x += sq){
+      const w = Math.min(sq, x0 + box - 2.5 * U - x);
+      c.fillStyle = i % 2 ? '#1f9e4a' : '#ffd400'; c.fillRect(x, -Wd / 2 + 0.8 * U, w, sq);
+      c.fillStyle = i % 2 ? '#ffd400' : '#1f9e4a'; c.fillRect(x, Wd / 2 - 0.8 * U - sq, w, sq);
+    }
+    const mx = x0 + box * 0.45; c.fillStyle = '#1f9e4a'; c.fillRect(mx - 5 * U, -1.6 * U, 10 * U, 3.2 * U); c.fillRect(mx - 1.6 * U, -5 * U, 3.2 * U, 10 * U);
+    c.fillStyle = beacons(v, 0); rr(c, x0 + box - 4.5 * U, -Wd / 2 + 2.5 * U, 3.5 * U, Wd / 2 - 2.5 * U, 1 * U); c.fill(); circle(c, x0 + 2.5 * U, Wd / 2 - 6 * U, 1.6 * U); c.fill();
+    c.fillStyle = beacons(v, 1); rr(c, x0 + box - 4.5 * U, 0, 3.5 * U, Wd / 2 - 2.5 * U, 1 * U); c.fill(); circle(c, x0 + 2.5 * U, -Wd / 2 + 6 * U, 1.6 * U); c.fill();
+    c.fillStyle = '#ffd400'; rr(c, L / 2 - cab, -Wd / 2 + 0.5 * U, cab, Wd - 1 * U, 4 * U); c.fill();
+    cabGlass(c, L, Wd, cab); lamps(c, L, Wd);
+  },
+  tipper(c, L, Wd, v){
+    tyres(c, [-L * 0.34, -L * 0.14, L * 0.32], Wd);
+    const cab = L * 0.27;
+    c.fillStyle = '#444'; c.fillRect(-L / 2 + 2 * U, -3 * U, L - 4 * U, 6 * U);
+    const tip = v.tip || 0, full = L - cab - 3 * U, bedL = full * (1 - 0.3 * tip), bx = -L / 2;
+    c.fillStyle = shade('#6c757d', tip * 0.3); rr(c, bx, -Wd / 2, bedL, Wd, 3 * U); c.fill();
+    c.fillStyle = shade('#6c757d', -0.3 + tip * 0.2); rr(c, bx + 2 * U, -Wd / 2 + 2 * U, bedL - 4 * U, Wd - 4 * U, 2 * U); c.fill();
+    if (v.load > 0.03){
+      const f = v.load;
+      c.fillStyle = '#e9c46a'; c.beginPath(); c.ellipse(bx + bedL / 2 - (1 - f) * bedL * 0.2, 0, (bedL / 2 - 3 * U) * Math.max(0.2, f), (Wd / 2 - 3 * U) * Math.sqrt(f), 0, 0, TAU); c.fill();
+      c.fillStyle = '#f4d58d'; c.beginPath(); c.ellipse(bx + bedL / 2 - 2 * U, -2 * U, (bedL / 4) * f, (Wd / 5) * f, 0, 0, TAU); c.fill();
+    }
+    c.fillStyle = v.color; rr(c, L / 2 - cab, -Wd / 2 + 0.5 * U, cab, Wd - 1 * U, 4 * U); c.fill();
+    cabGlass(c, L, Wd, cab); lamps(c, L, Wd);
+  },
+  robber(c, L, Wd, v){ // the getaway car: open-topped so you can see him (he and his bag are drawn upright, in drawRiders)
+    tyres(c, [-L * 0.3, L * 0.3], Wd);
+    c.fillStyle = '#2b2d42'; rr(c, -L / 2, -Wd / 2, L, Wd, 6 * U); c.fill();
+    c.fillStyle = '#5a5e7a'; rr(c, -L * 0.42, -Wd / 2 + 2.5 * U, L * 0.64, Wd - 5 * U, 3 * U); c.fill();
+    c.fillStyle = '#bfe3ff'; rr(c, L * 0.23, -Wd / 2 + 2 * U, L * 0.07, Wd - 4 * U, 1.5 * U); c.fill();
+    c.fillStyle = '#f4f4f4'; c.fillRect(L * 0.32, -1.5 * U, L * 0.17, 3 * U);
+    lamps(c, L, Wd);
+  },
+  mixer(c, L, Wd, v){
+    tyres(c, [-L * 0.34, -L * 0.14, L * 0.32], Wd);
+    const cab = L * 0.27, dl = L - cab - 4 * U, dx = -L / 2 + 1 * U;
+    c.fillStyle = '#444'; c.fillRect(-L / 2 + 2 * U, -3 * U, L - 4 * U, 6 * U);
+    c.save(); rr(c, dx, -Wd / 2 + 1 * U, dl, Wd - 2 * U, Wd / 2 - 1 * U); c.clip();
+    c.fillStyle = '#f1f1f1'; c.fillRect(dx, -Wd / 2, dl, Wd);
+    c.fillStyle = v.color; const ph = (v.drum * 8 * U) % (10 * U);
+    for (let x = dx - Wd - 10 * U + ph; x < dx + dl + Wd; x += 10 * U){
+      c.beginPath(); c.moveTo(x, -Wd / 2); c.lineTo(x + 4.5 * U, -Wd / 2); c.lineTo(x + 4.5 * U + Wd * 0.6, Wd / 2); c.lineTo(x + Wd * 0.6, Wd / 2); c.closePath(); c.fill();
+    }
+    c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(dx, -Wd / 2 + 3 * U, dl, 2.5 * U);
+    c.restore();
+    c.fillStyle = v.color; rr(c, L / 2 - cab, -Wd / 2 + 0.5 * U, cab, Wd - 1 * U, 4 * U); c.fill();
+    cabGlass(c, L, Wd, cab); lamps(c, L, Wd);
+  },
+};
+function drawVehicle(c, v){
+  const T = VT[v.type], L = T.len * U, Wd = T.wid * U, s = 1 + Math.sin(v.bounce * 24) * v.bounce * 0.3;
+  c.save(); c.translate(v.x, v.y); c.rotate(v.a);
+  c.fillStyle = 'rgba(0,0,0,0.22)'; rr(c, -L / 2 + 2 * U, -Wd / 2 + 3 * U, L, Wd, 5 * U); c.fill();
+  c.scale(s, s);
+  VDRAW[v.type](c, L, Wd, v);
+  if (v.called){ c.fillStyle = blink() ? '#ffb000' : '#8a5a00'; circle(c, L / 2 - L * 0.135, 0, 2.8 * U); c.fill(); }
+  c.restore();
+  if (v.rider || v.loot) drawRiders(c, v, s);
+}
+// people (and the robber's bag) in a car are drawn upright, like the emoji people, whichever way the car faces
+function drawRiders(c, v, s){
+  const L = v.half * 2 * U, at_ = f => ({ x: v.x + Math.cos(v.a) * f * L, y: v.y + Math.sin(v.a) * f * L });
+  c.fillStyle = '#000'; // (colour emoji take their alpha from the fill colour)
+  if (v.loot){ const p = at_(-0.27); c.font = `${Math.round(13 * U * s)}px ${EF}`; c.fillText('💰', p.x, p.y); }
+  if (v.rider === 'robber'){ const p = at_(v.type === 'police' ? -0.28 : 0.03); drawRobber(c, p.x, p.y, 5 * U * s, false, 0); }
+  if (v.rider === 'cop'){ const p = at_(0.03); c.font = `${Math.round(15 * U * s)}px ${EF}`; c.fillText('👮', p.x, p.y); }
+}
+// the robber, head and shoulders like the emoji people: stripy jumper, a black mask with big eyes, a bobble hat
+// and a cheeky smile. `up` puts his hands up; `r` is the size of his head.
+function drawRobber(c, x, y, r, up, bob){
+  c.save(); c.translate(x, y - bob);
+  const band = (w, y0, y1) => { c.fillStyle = '#fafafa'; c.fillRect(-w, y0, w * 2, y1 - y0); c.fillStyle = '#23232b'; for (let yy = y0 + r * 0.08; yy < y1; yy += r * 0.26) c.fillRect(-w, yy, w * 2, r * 0.13); };
+  if (up){ // arms up: white sleeves with black stripes
+    c.lineCap = 'round';
+    for (const sx of [-1, 1]){
+      c.strokeStyle = '#fafafa'; c.lineWidth = r * 0.5; c.beginPath(); c.moveTo(sx * r * 0.85, r * 0.95); c.lineTo(sx * r * 1.35, -r * 0.55); c.stroke();
+      c.save(); c.setLineDash([r * 0.13, r * 0.13]); c.strokeStyle = '#23232b'; c.stroke(); c.restore();
+      c.fillStyle = '#f5c7a0'; circle(c, sx * r * 1.4, -r * 0.78, r * 0.3); c.fill();
+    }
+    c.lineCap = 'butt';
+  }
+  c.save(); c.beginPath(); c.ellipse(0, r * 1.75, r * 1.2, r * 0.95, 0, Math.PI, 0); c.closePath(); c.clip(); band(r * 1.25, r * 0.75, r * 1.8); c.restore();
+  c.fillStyle = '#f5c7a0'; circle(c, 0, 0, r); c.fill();
+  c.fillStyle = 'rgba(240,120,110,0.45)'; circle(c, -r * 0.55, r * 0.35, r * 0.2); c.fill(); circle(c, r * 0.55, r * 0.35, r * 0.2); c.fill();
+  c.fillStyle = '#23232b'; c.beginPath(); c.arc(0, -r * 0.42, r * 0.98, Math.PI, 0); c.closePath(); c.fill();
+  c.fillStyle = '#3b3b48'; rr(c, -r * 1.02, -r * 0.62, r * 2.04, r * 0.3, r * 0.15); c.fill();
+  c.fillStyle = '#fafafa'; circle(c, 0, -r * 1.42, r * 0.26); c.fill();
+  c.fillStyle = '#23232b'; rr(c, -r * 1.0, -r * 0.34, r * 2.0, r * 0.46, r * 0.23); c.fill();
+  for (const sx of [-1, 1]){ c.fillStyle = '#fff'; circle(c, sx * r * 0.38, -r * 0.11, r * 0.19); c.fill(); c.fillStyle = '#23232b'; circle(c, sx * r * 0.36, -r * 0.08, r * 0.09); c.fill(); }
+  c.strokeStyle = '#8a4b2a'; c.lineWidth = Math.max(0.8, r * 0.12); c.beginPath(); c.arc(0, r * 0.3, r * 0.36, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke();
+  c.restore();
+}
+// the robber and the police officer on foot, when he's caught
+function drawFigures(c, time){
+  for (const f of rob.figs){
+    const bob = f.walk ? Math.abs(Math.sin(time * 12)) * 2.5 * U : 0, s = f.pop * (1 + (f.bounce || 0));
+    c.fillStyle = 'rgba(0,0,0,0.2)'; c.beginPath(); c.ellipse(f.x, f.y + 13 * U, 9 * U * s, 3 * U * s, 0, 0, TAU); c.fill();
+    c.fillStyle = '#000'; // (colour emoji take their alpha from the fill colour)
+    if (f.who === 'robber'){
+      drawRobber(c, f.x, f.y, 8.5 * U * s, !f.bag, bob);
+      if (f.bag){ c.fillStyle = '#000'; c.font = `${Math.max(1, Math.round(16 * U * s))}px ${EF}`; c.fillText('💰', f.x + 11 * U * s, f.y + 6 * U * s - bob); }
+    }
+    else { c.font = `${Math.max(1, Math.round(26 * U * s))}px ${EF}`; c.fillText('👮', f.x, f.y - bob); }
+  }
+}
+function vehicleSound(v){
+  switch (v.type){
+    case 'car': sBeep(); break;
+    case 'police': case 'fire': case 'ambulance': v.siren = 3; sSiren(v.type); break;
+    case 'tractor': sPutt(); break;
+    case 'digger': sReverse(); break;
+    default: sHonk();
+  }
+}
+
+/* ================= building site animation ================= */
+// the next slot to fill: lowest layer first, nearest to `near` (a site point) or in ring order
+function freeSlot(near){
+  const n = build.slots.length; if (!n) return -1;
+  let lay = 2; for (const f of build.fill) lay = Math.min(lay, f);
+  if (lay >= 2) return -1;
+  let best = -1, bd = 1e18;
+  for (let k = 0; k < n; k++){
+    if (build.fill[k] !== lay) continue;
+    if (!near) return k;
+    const s = build.slots[k], d = (s.u - near.u) ** 2 + (s.w - near.w) ** 2;
+    if (d < bd){ bd = d; best = k; }
+  }
+  return best;
+}
+function addBlock(color, quiet, near){
+  if (!build.total || build.done) return;
+  const k = freeSlot(near); if (k < 0) return;
+  build.blocks.push({ c: color, k, l: build.fill[k]++ });
+  if (!quiet) sBlock();
+  if (build.blocks.length >= build.total){
+    build.done = true; build.doneT = 0; sCheer();
+    const b = site.bld, cc = site.toW((b.u0 + b.u1) / 2, (b.w0 + b.w1) / 2);
+    sparkle(cc.x, cc.y, 40); emoji(cc.x, cc.y, '🎉', 3, 28);
+  }
+}
+function slotPos(k, layer){
+  const s = build.slots[k];
+  return { u: s.u - layer * 1.5 * U, w: s.w - layer * 1.5 * U, layer };
+}
+function inBld(u, w, m){ const b = site.bld; return b && u > b.u0 - m && u < b.u1 + m && w > b.w0 - m && w < b.w1 + m; }
+const craneHook = () => ({ u: crane.cu + Math.cos(crane.ang) * crane.r, w: crane.cw + Math.sin(crane.ang) * crane.r });
+const exBucket = () => { const r = ex.boom + 6 * U; return { u: ex.u + Math.cos(ex.ang) * r, w: ex.w + Math.sin(ex.ang) * r }; };
+// the pile where the tippers tip (a new one starts there if the bulldozer pushed the old one away)
+function dumpPile(){
+  const d = site.pile; let best = null, bd = 1e18;
+  for (const p of site.piles){ const k = Math.hypot(p.u - d.u, p.w - d.w); if (!p.fade && k < bd){ bd = k; best = p; } }
+  if (!best || bd > 10 * U){ best = { u: d.u, w: d.w, s: 3 }; site.piles.push(best); }
+  return best;
+}
+function dumpDirt(b){
+  const q = site.toW(b.u, b.w);
+  for (let i = 0; i < 12; i++) fx.push({ t: 'dot', x: q.x + rand(-5, 5) * U, y: q.y + rand(-5, 5) * U, vx: rand(-30, 30) * U, vy: rand(-30, 30) * U, life: 0, max: 0.5, r: rand(1.5, 3) * U, col: pick(['#8b5a2b', '#a06a35', '#6b4423']) });
+  if (Math.hypot(b.u - ex.heap.u, b.w - ex.heap.w) < 16 * U) return; // onto the spoil heap
+  const p = site.piles.find(o => !o.fade && Math.hypot(o.u - b.u, o.w - b.w) < o.s * U + 4 * U);
+  if (p){ p.s = Math.min(22, Math.hypot(p.s, 4)); return; }
+  if (siteRoom(b.u, b.w, 'pl') >= 5 * U) site.piles.push({ u: b.u, w: b.w, s: 6, dirt: true });
+}
+function updateCrane(dt){
+  const cr = crane;
+  if (cr.held) cr.man = 2.5;
+  else if (cr.man > 0){ cr.man -= dt; if (cr.man <= 0 && cr.phase === 'hand') cr.phase = cr.carry ? 'toBuild' : 'toStack'; }
+  const man = cr.man > 0, sp = man ? 1.4 : cr.boost > 0 ? 2.6 : 1;
+  cr.boost = Math.max(0, cr.boost - dt);
+  if (cr.phase === 'lift' || cr.phase === 'drop'){
+    // hook goes down and back up; the jib holds still
+    cr.t += dt * sp;
+    cr.depth = Math.sin(Math.PI * clamp(cr.t / 1.2, 0, 1));
+    if (cr.phase === 'lift' && cr.t > 0.6 && !cr.carry){ cr.carry = true; cr.col = nextCol(); if (man) sClank(); }
+    if (cr.phase === 'drop' && cr.t > 0.6 && cr.carry){ cr.carry = false; if (!build.done && cr.dropAt !== 'stack') addBlock(cr.col, !man && cr.boost > 0, cr.dropAt); else if (man) sBlock(); }
+    if (cr.t >= 1.2){ cr.depth = 0; cr.phase = man ? 'hand' : cr.phase === 'lift' ? 'toBuild' : 'toStack'; }
+  } else if (man){
+    // his finger drives the hook: over the pallet it picks up a block, over the house it lowers it in
+    cr.phase = 'hand';
+    cr.depth = Math.max(0, cr.depth - dt * 2);
+    const du = cr.tu - cr.cu, dw = cr.tw - cr.cw;
+    const da = angDiff(Math.atan2(dw, du), cr.ang), dr = clamp(Math.hypot(du, dw), cr.J * 0.18, cr.J - 4 * U) - cr.r;
+    cr.ang += clamp(da, -2 * dt, 2 * dt); cr.r += clamp(dr, -120 * U * dt, 120 * U * dt);
+    if (Math.abs(da) > 0.03 || Math.abs(dr) > 1 * U){ cr.hum -= dt; if (cr.hum <= 0){ sHum(150); cr.hum = 0.2; } }
+    if (!cr.held || cr.depth > 0) return;
+    const h = craneHook(), st = site.stack;
+    const at = (p, r) => Math.hypot(h.u - p.u, h.w - p.w) < r && Math.hypot(cr.tu - p.u, cr.tw - p.w) < r + 10 * U;
+    if (cr.last && Math.hypot(h.u - cr.last.u, h.w - cr.last.w) < 14 * U) return; // move away before the next go
+    if (st && at(st, 11 * U)){ cr.phase = cr.carry ? 'drop' : 'lift'; cr.dropAt = 'stack'; }
+    else if (cr.carry && !build.done && inBld(h.u, h.w, 4 * U) && inBld(cr.tu, cr.tw, 10 * U)){ cr.phase = 'drop'; cr.dropAt = { u: h.u, w: h.w }; }
+    if (cr.phase !== 'hand'){ cr.t = 0; cr.last = h; }
+  } else {
+    const tgt = cr.phase === 'toStack' ? site.stack : (() => { const k = freeSlot(null); return k < 0 ? site.stack : slotPos(k, build.fill[k]); })();
+    const du = tgt.u - cr.cu, dw = tgt.w - cr.cw, ta = Math.atan2(dw, du), tr = Math.hypot(du, dw);
+    cr.depth = Math.max(0, cr.depth - dt * 2);
+    const da = angDiff(ta, cr.ang), step = 0.55 * sp * dt;
+    cr.ang += clamp(da, -step, step);
+    const dr = tr - cr.r; cr.r += clamp(dr, -36 * U * sp * dt, 36 * U * sp * dt);
+    if (Math.abs(da) < 0.01 && Math.abs(dr) < 0.5 * U && cr.depth <= 0){ cr.phase = cr.phase === 'toStack' ? 'lift' : 'drop'; cr.t = 0; cr.dropAt = null; }
+  }
+}
+function updateDigger(dt){
+  const e = ex;
+  if (e.held) e.man = 2;
+  else if (e.man > 0){
+    e.man -= dt;
+    if (e.man <= 0){ e.from = { ang: e.ang, boom: e.boom, curl: e.curl, load: e.load }; e.blend = 0; e.t = e.load > 0.5 ? 2 : 0; e.act = null; }
+  }
+  if (e.man > 0){
+    if (e.act){
+      // scoop or tip out; the arm holds still
+      e.actT += dt; const k = clamp(e.actT / 0.7, 0, 1);
+      if (e.act === 'scoop'){ e.curl = Math.max(e.curl, ease(k)); e.load = Math.max(e.load, ease(k)); }
+      else {
+        e.curl = Math.min(e.curl, 1 - ease(k)); e.load = Math.min(e.load, 1 - ease(k));
+        if (!e.dumped && k > 0.3){ e.dumped = true; dumpDirt(exBucket()); }
+      }
+      if (k >= 1) e.act = null;
+      return;
+    }
+    if (!e.held) return;
+    const du = e.tu - e.u, dw = e.tw - e.w;
+    const da = angDiff(Math.atan2(dw, du), e.ang), db = clamp(Math.hypot(du, dw) - 6 * U, 22 * U, 42 * U) - e.boom;
+    e.ang += clamp(da, -2.4 * dt, 2.4 * dt); e.boom += clamp(db, -70 * U * dt, 70 * U * dt);
+    if (Math.abs(da) > 0.03 || Math.abs(db) > 1 * U){ e.hum -= dt; if (e.hum <= 0){ sHum(240); e.hum = 0.16; } }
+    const b = exBucket();
+    if (e.load < 0.5 && Math.hypot(b.u - e.hole.u, b.w - e.hole.w) < 12 * U){ e.act = 'scoop'; e.actT = 0; sScoop(); }
+    else if (e.load >= 0.5 && Math.hypot(b.u - e.heap.u, b.w - e.heap.w) < 14 * U){ e.act = 'dump'; e.actT = 0; e.dumped = false; sDump(); }
+    return;
+  }
+  e.t += dt * (e.boost > 0 ? 2.2 : 1); e.boost = Math.max(0, e.boost - dt);
+  const t = e.t % 6;
+  let ang, boom, curl = 0, load = 0;
+  if (t < 1.2){ const k = ease(t / 1.2); ang = lerpAng(e.heapA, e.holeA, k); boom = lerp(28, 36, k); e.dumped = false; }
+  else if (t < 2){ ang = e.holeA; const k = ease((t - 1.2) / 0.8); boom = 36 - 4 * k; curl = k; load = k; }
+  else if (t < 3.4){ const k = ease((t - 2) / 1.4); ang = lerpAng(e.holeA, e.heapA, k); boom = 32 - 2 * k; curl = 1; load = 1; }
+  else if (t < 4.2){
+    const k = (t - 3.4) / 0.8; ang = e.heapA; boom = 30; curl = 1 - ease(k); load = 1 - ease(k);
+    if (!e.dumped && k > 0.3){
+      e.dumped = true;
+      const hp = site.toW(e.heap.u, e.heap.w);
+      for (let i = 0; i < 10; i++) fx.push({ t: 'dot', x: hp.x + rand(-6, 6) * U, y: hp.y + rand(-6, 6) * U, vx: rand(-30, 30) * U, vy: rand(-30, 30) * U, life: 0, max: 0.5, r: rand(1.5, 3) * U, col: pick(['#8b5a2b', '#a06a35', '#6b4423']) });
+    }
+  } else { ang = e.heapA; boom = 28; }
+  boom *= U;
+  if (e.blend < 1){ // ease back from wherever he left the arm
+    e.blend = Math.min(1, e.blend + dt / 0.7);
+    const k = ease(e.blend), f = e.from;
+    ang = lerpAng(f.ang, ang, k); boom = lerp(f.boom, boom, k); curl = lerp(f.curl, curl, k); load = lerp(f.load, load, k);
+  }
+  e.ang = ang; e.boom = boom; e.curl = curl; e.load = load;
+}
+function digRelease(){
+  // let go with a full bucket: tip it out right there (a dirt pile for the bulldozer)
+  if (ex.load < 0.5 || ex.act) return;
+  const b = exBucket();
+  if (Math.hypot(b.u - ex.hole.u, b.w - ex.hole.w) > 16 * U){ ex.act = 'dump'; ex.actT = 0; ex.dumped = false; sDump(); }
+}
+// shove any pile in front of the blade; one jammed against something gets spread flat as the blade runs into it
+function pushPiles(u, w, a, moved){
+  const hu = Math.cos(a), hw = Math.sin(a), bu = u + hu * 19 * U, bw = w + hw * 19 * U;
+  for (const p of site.piles){
+    if (p.fade) continue;
+    const r = p.s * U, du = p.u - bu, dw = p.w - bw, ahead = du * hu + dw * hw, side = -du * hw + dw * hu;
+    if (ahead >= r * 0.85 || ahead < -r * 0.5 || Math.abs(side) > 15 * U + r * 0.4) continue;
+    const k = r * 0.85 - ahead, nu = p.u + hu * k, nw = p.w + hw * k;
+    p.push = 0.3;
+    if (siteRoom(nu, nw, 'pl') >= r * 0.8){ p.u = nu; p.w = nw; continue; }
+    p.s = Math.max(0, p.s - moved / U * 0.8);
+    if (p.s < 3){ p.fade = true; p.s = 0; }
+  }
+}
+// The bulldozer drives round things: site.dg is a grid of spots with room for it. From where it is, it searches for the
+// reachable spot nearest his finger (so a finger on the house or across the road just brings it as close as it can get).
+const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+function buildDozerGrid(){
+  const G = 6 * U, nu = Math.max(1, Math.ceil((site.u1 - site.u0) / G)), nw = Math.max(1, Math.ceil((site.wn + site.wp) / G));
+  const free = [];
+  for (let i = 0; i < nu; i++) for (let j = 0; j < nw; j++) free.push(siteRoom(site.u0 + (i + 0.5) * G, -site.wn + (j + 0.5) * G, 'dz') >= 16 * U ? 1 : 0);
+  site.dg = { G, nu, nw, free };
+}
+function dozerRegion(){ // rebuilds site.dg and returns the cells of its biggest connected patch
+  buildDozerGrid();
+  const { nu, nw, free } = site.dg, seen = new Array(nu * nw).fill(0);
+  let best = [];
+  for (let s = 0; s < nu * nw; s++){
+    if (!free[s] || seen[s]) continue;
+    const q = [s]; seen[s] = 1;
+    for (let h = 0; h < q.length; h++){
+      const c = q[h], i = (c / nw) | 0, j = c % nw;
+      for (const [a, b] of [[i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]]){
+        if (a < 0 || b < 0 || a >= nu || b >= nw) continue;
+        const n = a * nw + b; if (free[n] && !seen[n]){ seen[n] = 1; q.push(n); }
+      }
+    }
+    if (q.length > best.length) best = q;
+  }
+  return best;
+}
+function dozerPlan(d){
+  const { G, nu, nw, free } = site.dg;
+  const cu = i => site.u0 + (i + 0.5) * G, cw = j => -site.wn + (j + 0.5) * G;
+  const si = clamp(Math.floor((d.u - site.u0) / G), 0, nu - 1), sj = clamp(Math.floor((d.w + site.wn) / G), 0, nw - 1);
+  let s = si * nw + sj;
+  if (!free[s]){ // squeezed in somewhere tight: start from the nearest roomy spot
+    let bd = 1e18; s = -1;
+    for (let i = Math.max(0, si - 4); i <= Math.min(nu - 1, si + 4); i++) for (let j = Math.max(0, sj - 4); j <= Math.min(nw - 1, sj + 4); j++){
+      const k = (cu(i) - d.u) ** 2 + (cw(j) - d.w) ** 2;
+      if (free[i * nw + j] && k < bd){ bd = k; s = i * nw + j; }
+    }
+    if (s < 0) return null;
+  }
+  const prev = new Array(nu * nw).fill(-2), q = [s];
+  prev[s] = -1;
+  let best = s, bd = 1e18;
+  for (let h = 0; h < q.length; h++){
+    const c = q[h], i = (c / nw) | 0, j = c % nw, k = (cu(i) - d.tu) ** 2 + (cw(j) - d.tw) ** 2;
+    if (k < bd - 1e-6){ bd = k; best = c; }
+    for (const [di, dj] of N8){
+      const a = i + di, b = j + dj;
+      if (a < 0 || b < 0 || a >= nu || b >= nw) continue;
+      const n = a * nw + b;
+      if (prev[n] !== -2 || !free[n] || (di && dj && (!free[a * nw + j] || !free[i * nw + b]))) continue;
+      prev[n] = c; q.push(n);
+    }
+  }
+  const pts = [];
+  for (let c = best; c >= 0; c = prev[c]) pts.push({ u: cu((c / nw) | 0), w: cw(c % nw) });
+  pts.reverse();
+  if (Math.sqrt(bd) < G * 1.5 && siteRoom(d.tu, d.tw, 'dz') >= 13 * U) pts.push({ u: d.tu, w: d.tw }); // right to the finger
+  return pts;
+}
+function clearRun(u0, w0, u1, w1){ // a straight drive with room all the way (a lookup in the grid, so it's cheap)
+  const { G, nu, nw, free } = site.dg, n = Math.ceil(Math.hypot(u1 - u0, w1 - w0) / (3 * U));
+  for (let i = 1; i < n; i++){
+    const a = Math.floor((u0 + (u1 - u0) * i / n - site.u0) / G), b = Math.floor((w0 + (w1 - w0) * i / n + site.wn) / G);
+    if (a < 0 || b < 0 || a >= nu || b >= nw || !free[a * nw + b]) return false;
+  }
+  return true;
+}
+function updateDozer(dt){
+  const d = dozer;
+  d.bounce = Math.max(0, d.bounce - dt); d.bonkT = Math.max(0, d.bonkT - dt); d.backT = Math.max(0, d.backT - dt);
+  let want = 0, turn = 0;
+  if (d.backT > 0){ d.rev = true; want = 35 * U; } // wedged: back out a little, then try again
+  else if (d.held){
+    d.planT -= dt;
+    if (!d.path || d.planT <= 0 || Math.hypot(d.tu - d.pu, d.tw - d.pw) > 8 * U){ d.path = dozerPlan(d); d.planT = 0.4; d.pu = d.tu; d.pw = d.tw; }
+    const P = d.path;
+    if (P && P.length){
+      let near = 0, nd = 1e18; // aim as far along the route (up to 25 steps on) as there's a clear run
+      for (let i = 0; i < P.length; i++){ const k = (P[i].u - d.u) ** 2 + (P[i].w - d.w) ** 2; if (k < nd){ nd = k; near = i; } }
+      let k = Math.min(P.length - 1, near + 25);
+      while (k > near + 1 && !clearRun(d.u, d.w, P[k].u, P[k].w)) k--;
+      const g = P[k], last = k === P.length - 1, du = g.u - d.u, dw = g.w - d.w, dist = Math.hypot(du, dw);
+      if (dist > (last ? 6 : 3) * U){
+        // tracks: turn on the spot, then drive; back up (beep beep) to a spot close behind
+        const ta = Math.atan2(dw, du), da = angDiff(ta, d.a);
+        if (!d.rev && last && Math.abs(da) > 2.3 && dist < 90 * U) d.rev = true;
+        else if (d.rev && (!last || Math.abs(da) < 1.9 || dist > 110 * U)) d.rev = false;
+        const face = d.rev ? angDiff(ta + Math.PI, d.a) : da;
+        turn = clamp(face, -2.2 * dt, 2.2 * dt);
+        if (Math.abs(face) < 0.7) want = Math.min(d.rev ? 45 * U : 80 * U, (last ? dist : dist + 30 * U) * 2.5) * Math.cos(face);
+      }
+    }
+  }
+  d.v += clamp(want - d.v, -300 * U * dt, 150 * U * dt);
+  let blocked = false;
+  if (turn){ if (dozerFits(d.u, d.w, d.a + turn)) d.a += turn; else blocked = true; }
+  const step = d.v * dt * (d.rev ? -1 : 1);
+  if (Math.abs(step) > 1e-4){
+    const nu = d.u + Math.cos(d.a) * step, nw = d.w + Math.sin(d.a) * step;
+    let mu = null, mw = null;
+    if (dozerFits(nu, nw, d.a)){ mu = nu; mw = nw; }
+    else if (dozerFits(nu, d.w, d.a)){ mu = nu; mw = d.w; }
+    else if (dozerFits(d.u, nw, d.a)){ mu = d.u; mw = nw; }
+    if (mu === null){
+      d.v *= 0.3; blocked = true;
+      if (d.held && d.bonkT <= 0){ sBonk(); d.bonkT = 1.2; }
+    } else {
+      const moved = Math.hypot(mu - d.u, mw - d.w);
+      if (step > 0) pushPiles(mu, mw, d.a, moved);
+      d.odo += moved * Math.sign(step); d.u = mu; d.w = mw;
+    }
+  }
+  if (d.held && blocked && d.backT <= 0){ d.blockT += dt; if (d.blockT > 0.5){ d.blockT = 0; d.backT = 0.6; d.path = null; } }
+  else d.blockT = Math.max(0, d.blockT - dt);
+  // merge piles that got pushed together
+  const P = site.piles;
+  for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++){
+    const a = P[i], b = P[j];
+    if (a.fade || b.fade || Math.hypot(a.u - b.u, a.w - b.w) > (a.s + b.s) * U * 0.55) continue;
+    const big = a.s >= b.s ? a : b, small = big === a ? b : a;
+    big.s = Math.min(26, Math.hypot(a.s, b.s)); small.fade = true; small.s = 0;
+  }
+  // engine noises and exhaust while it moves
+  if (Math.abs(d.v) > 4 * U){
+    d.chugT -= dt; if (d.chugT <= 0){ sChug(); d.chugT = 0.13; }
+    if (d.rev){ d.beepT -= dt; if (d.beepT <= 0){ sBackUp(); d.beepT = 0.7; } } else d.beepT = 0;
+    d.smokeT -= dt;
+    if (d.smokeT <= 0){
+      const q = site.toW(d.u + Math.cos(d.a) * 4 * U + Math.sin(d.a) * 4 * U, d.w + Math.sin(d.a) * 4 * U - Math.cos(d.a) * 4 * U);
+      fx.push({ t: 'dot', x: q.x, y: q.y, vx: rand(-8, 8) * U, vy: rand(-25, -12) * U, life: 0, max: 0.8, r: rand(2, 3.5) * U, col: 'rgba(90,90,90,0.5)' });
+      d.smokeT = 0.12;
+    }
+    for (const p of P) if (p.push > 0 && Math.random() < 0.3){
+      const q = site.toW(p.u, p.w);
+      fx.push({ t: 'dot', x: q.x + rand(-1, 1) * p.s * U, y: q.y + rand(-1, 1) * p.s * U, vx: rand(-20, 20) * U, vy: rand(-20, 20) * U, life: 0, max: 0.4, r: rand(1.2, 2.4) * U, col: p.dirt ? '#8b5a2b' : '#e9c46a' });
+    }
+  }
+}
+function updateSite(dt){
+  if (!site) return;
+  if (build.done){
+    build.doneT += dt;
+    if (build.doneT > 14){ build.done = false; build.blocks.length = 0; build.fill.fill(0); const b = site.bld, cc = site.toW((b.u0 + b.u1) / 2, (b.w0 + b.w1) / 2); sparkle(cc.x, cc.y, 20); }
+  }
+  if (crane) updateCrane(dt);
+  if (ex) updateDigger(dt);
+  if (dozer) updateDozer(dt);
+  // sand settles slowly (the tipping-spot pile never goes, pushed ones leave a small mound); too many and the smallest go
+  const P = site.piles, home = site.pile;
+  for (const p of P){
+    p.push = Math.max(0, (p.push || 0) - dt);
+    if (p.fade){ p.s -= dt * 8; continue; }
+    const min = Math.hypot(p.u - home.u, p.w - home.w) < 10 * U ? 9 : 5;
+    if (p.s > min) p.s = Math.max(min, p.s - dt * 0.12);
+  }
+  if (P.filter(p => !p.fade).length > 7){
+    let small = null;
+    for (const p of P) if (!p.fade && Math.hypot(p.u - home.u, p.w - home.w) > 10 * U && (!small || p.s < small.s)) small = p;
+    if (small) small.fade = true;
+  }
+  for (let i = P.length - 1; i >= 0; i--) if (P[i].fade && P[i].s <= 0.5) P.splice(i, 1);
+  for (const s of signs){ s.bounce = Math.max(0, s.bounce - dt); s.shake = Math.max(0, s.shake - dt); }
+}
+function drawSite(c, time){
+  if (!site) return;
+  c.save(); siteFrame(c);
+  // sand (and dirt) piles; the screen-space highlight keeps the light coming from the top left
+  const lu = -0.2 * (site.eu.x + site.eu.y), lw = -0.2 * (site.ew.x + site.ew.y);
+  for (const p of site.piles){
+    const ps = p.s * U, col = p.dirt ? ['#8b5a2b', '#a06a35', '#b77d42'] : ['#d9b25a', '#e9c46a', '#f4d58d'];
+    if (ps < 0.5) continue;
+    c.fillStyle = 'rgba(0,0,0,0.1)'; circle(c, p.u + (2 * site.eu.x + 3 * site.eu.y) * U, p.w + (2 * site.ew.x + 3 * site.ew.y) * U, ps); c.fill();
+    c.fillStyle = col[0]; circle(c, p.u, p.w, ps); c.fill();
+    c.fillStyle = col[1]; circle(c, p.u + lu * ps, p.w + lw * ps, ps * 0.65); c.fill();
+    c.fillStyle = col[2]; circle(c, p.u + lu * ps * 1.75, p.w + lw * ps * 1.75, ps * 0.28); c.fill();
+  }
+  // building blocks
+  if (site.bld){
+    const B = 10 * U;
+    for (const blk of build.blocks){
+      const s = slotPos(blk.k, blk.l), sz = B * (1 - 0.06 * s.layer);
+      c.fillStyle = 'rgba(0,0,0,0.18)'; rr(c, s.u - sz / 2 + (1.5 + s.layer * 1.5) * U, s.w - sz / 2 + (2 + s.layer * 1.5) * U, sz, sz, 1.5 * U); c.fill();
+      c.fillStyle = blk.c; rr(c, s.u - sz / 2, s.w - sz / 2, sz, sz, 1.5 * U); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.3)'; rr(c, s.u - sz / 2 + 1.5 * U, s.w - sz / 2 + 1.5 * U, sz * 0.4, sz * 0.4, 1 * U); c.fill();
+    }
+    if (build.done){
+      const b = site.bld, k = Math.min(1, build.doneT / 0.5), mu = (b.u0 + b.u1) / 2, mw = (b.w0 + b.w1) / 2;
+      c.save(); c.translate(mu - 3 * U, mw - 3 * U); c.scale(k, k);
+      const lu = (b.u1 - b.u0) / 2 + 3 * U, lw = (b.w1 - b.w0) / 2 + 3 * U;
+      c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, -lu + 4 * U, -lw + 5 * U, lu * 2, lw * 2, 3 * U); c.fill();
+      c.fillStyle = '#d64545'; rr(c, -lu, -lw, lu * 2, lw, 3 * U); c.fill();
+      c.fillStyle = '#a83232'; rr(c, -lu, 0, lu * 2, lw, 3 * U); c.fill();
+      c.strokeStyle = '#ff8a8a'; c.lineWidth = 2.5 * U; c.beginPath(); c.moveTo(-lu + 3 * U, 0); c.lineTo(lu - 3 * U, 0); c.stroke();
+      c.fillStyle = '#7a5a48'; c.fillRect(lu * 0.4, -lw * 0.7, 8 * U, 8 * U);
+      c.restore();
+    }
+  }
+  if (dozer) drawDozer(c, dozer);
+  if (ex) drawExcavator(c, ex);
+  c.restore();
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `${Math.round(20 * U)}px ${EF}`;
+  for (const wk of site.workers){ const q = site.toW(wk.u, wk.w); c.fillText('👷', q.x, q.y + Math.sin(time * 2 + wk.ph) * 1.5 * U); }
+  if (build.done){ const b = site.bld, q = site.toW((b.u0 + b.u1) / 2, (b.w0 + b.w1) / 2); c.font = `${Math.round(22 * U)}px ${EF}`; c.fillText('🚩', q.x + 10 * U, q.y - 16 * U + Math.sin(time * 3) * 2 * U); }
+  drawSigns(c, time);
+}
+const signType = kind => kind === 'tip' ? 'tipper' : 'mixer';
+// 0 = nothing on, 1 = working on it (truck coming, crane in turbo), 2 = a truck is here waiting for him to say go
+function signLit(kind){
+  if (kind === 'crane') return crane && crane.boost > 0 ? 1 : 0;
+  if (kind === 'col') return 0;
+  const t = signType(kind);
+  return vehicles.some(v => v.waiting > 0 && v.type === t) ? 2 : vehicles.some(v => v.called && v.type === t) ? 1 : 0;
+}
+// round yellow job signs, drawn upright on screen
+function drawSigns(c, time){
+  const R = SIGN_R * U;
+  for (const sg of signs){
+    const q = site.toW(sg.u, sg.w), lit = signLit(sg.kind);
+    const sh = sg.shake > 0 ? Math.sin(sg.shake * 40) * sg.shake * 12 * U : 0;
+    const k = 1 + Math.sin(sg.bounce * 22) * sg.bounce * 0.35 + (lit === 2 ? 0.1 + 0.08 * Math.sin(time * 8) : 0);
+    c.save(); c.translate(q.x + sh, q.y);
+    c.fillStyle = 'rgba(0,0,0,0.22)'; circle(c, 2.5 * U, 3.5 * U, R); c.fill();
+    c.scale(k, k);
+    if (lit){
+      const f = lit === 2 ? 12 : 7;
+      c.strokeStyle = `rgba(255,176,0,${0.55 + 0.45 * Math.sin(time * f)})`; c.lineWidth = (lit === 2 ? 5 : 3.5) * U; circle(c, 0, 0, R + 3.5 * U); c.stroke();
+    }
+    c.fillStyle = '#f4f4f4'; circle(c, 0, 0, R); c.fill();
+    c.fillStyle = '#ffd23f'; circle(c, 0, 0, R - 2.5 * U); c.fill();
+    c.strokeStyle = '#2b2b2b'; c.lineWidth = 1.5 * U; circle(c, 0, 0, R - 2.5 * U); c.stroke();
+    if (sg.kind === 'crane'){ c.font = `${Math.round(19 * U)}px ${EF}`; c.fillStyle = '#000'; c.fillText('🏗️', 0, 1 * U); }
+    else if (sg.kind === 'col'){
+      // the next block's colour; "any colour" is a block of four
+      const B = 17 * U, draw = (x, y, s, col) => { c.fillStyle = col; rr(c, x, y, s, s, 2 * U); c.fill(); };
+      c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, -B / 2 + 1.5 * U, -B / 2 + 2 * U, B, B, 2.5 * U); c.fill();
+      if (build.pick < 0){ const h = B / 2; draw(-h, -h, h, TOY[0]); draw(0, -h, h, TOY[1]); draw(-h, 0, h, TOY[2]); draw(0, 0, h, TOY[3]); }
+      else draw(-B / 2, -B / 2, B, TOY[build.pick]);
+      c.fillStyle = 'rgba(255,255,255,0.35)'; rr(c, -B / 2 + 2 * U, -B / 2 + 2 * U, B * 0.35, B * 0.35, 1.5 * U); c.fill();
+    }
+    else {
+      const type = signType(sg.kind), real = vehicles.find(v => v.type === type && v.route === siteRoute);
+      const v = { color: real ? real.color : colorFor(type), tip: lit === 2 && type === 'tipper' ? 0.5 + 0.5 * Math.sin(time * 5) : 0, load: 1, drum: time * (lit ? 5 : 0.8) };
+      c.save(); c.rotate(-0.25); c.scale(0.54, 0.54); VDRAW[type](c, VT[type].len * U, VT[type].wid * U, v); c.restore();
+    }
+    c.restore();
+  }
+}
+function drawDozer(c, d){
+  const L = 34 * U, Wd = 24 * U, k = 1 + Math.sin(d.bounce * 24) * d.bounce * 0.25;
+  c.save(); c.translate(d.u, d.w); c.rotate(d.a);
+  c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, -L / 2 + 2 * U, -Wd / 2 + 3 * U, L + 5 * U, Wd + 3 * U, 4 * U); c.fill();
+  c.scale(k, k);
+  // tracks, with cleats that roll as it drives
+  const tl = L * 0.84, tx = -L / 2, th = 7 * U, cl = 4 * U, ph = ((d.odo % cl) + cl) % cl;
+  c.fillStyle = '#2b2b2b'; rr(c, tx, -Wd / 2, tl, th, 3 * U); c.fill(); rr(c, tx, Wd / 2 - th, tl, th, 3 * U); c.fill();
+  c.strokeStyle = '#5a5a5a'; c.lineWidth = 1 * U; c.beginPath();
+  for (let x = tx + 1.5 * U + ph; x < tx + tl - 1 * U; x += cl){ c.moveTo(x, -Wd / 2 + 0.5 * U); c.lineTo(x, -Wd / 2 + th - 0.5 * U); c.moveTo(x, Wd / 2 - th + 0.5 * U); c.lineTo(x, Wd / 2 - 0.5 * U); }
+  c.stroke();
+  // push arms and blade
+  c.fillStyle = '#9c7000'; c.fillRect(L * 0.12, -Wd / 2 + 2.5 * U, L * 0.34, 2.5 * U); c.fillRect(L * 0.12, Wd / 2 - 5 * U, L * 0.34, 2.5 * U);
+  c.fillStyle = '#d99a00'; rr(c, L / 2 - 1.5 * U, -15 * U, 5.5 * U, 30 * U, 2 * U); c.fill();
+  c.fillStyle = '#f7c948'; rr(c, L / 2 - 1 * U, -14 * U, 1.8 * U, 28 * U, 0.9 * U); c.fill();
+  c.fillStyle = '#8a8a8a'; c.fillRect(L / 2 + 3 * U, -15 * U, 1.4 * U, 30 * U);
+  // body: engine at the front, cab at the back
+  c.fillStyle = '#f4b400'; rr(c, -L / 2 + 2 * U, -Wd / 2 + 4.5 * U, L * 0.8, Wd - 9 * U, 3 * U); c.fill();
+  c.strokeStyle = '#c98f00'; c.lineWidth = 1 * U; c.beginPath();
+  for (let x = L * 0.02; x < L * 0.3; x += 3 * U){ c.moveTo(x, -4 * U); c.lineTo(x, 4 * U); }
+  c.stroke();
+  c.fillStyle = '#333'; circle(c, 4 * U, -4 * U, 1.7 * U); c.fill();
+  c.fillStyle = '#e0a100'; rr(c, -L * 0.44, -8.5 * U, 15 * U, 17 * U, 3 * U); c.fill();
+  c.fillStyle = '#bfe3ff'; rr(c, -L * 0.44 + 1.8 * U, -6.7 * U, 11.4 * U, 13.4 * U, 2 * U); c.fill();
+  c.fillStyle = '#f4b400'; rr(c, -L * 0.44 + 3.5 * U, -5 * U, 8 * U, 10 * U, 1.5 * U); c.fill();
+  c.fillStyle = blink() ? '#ffb000' : '#a86b00'; circle(c, -L * 0.44 + 7.5 * U, 0, 1.8 * U); c.fill();
+  c.restore();
+}
+function drawExcavator(c, e){
+  c.save(); c.translate(e.u, e.w);
+  c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, -16 * U, -11 * U, 36 * U, 26 * U, 4 * U); c.fill();
+  c.fillStyle = '#2b2b2b'; rr(c, -18 * U, -13 * U, 36 * U, 8 * U, 3 * U); c.fill(); rr(c, -18 * U, 5 * U, 36 * U, 8 * U, 3 * U); c.fill();
+  c.strokeStyle = '#555'; c.lineWidth = 1 * U;
+  for (let x = -16; x < 18; x += 4){ c.beginPath(); c.moveTo(x * U, -13 * U); c.lineTo(x * U, -5 * U); c.moveTo(x * U, 5 * U); c.lineTo(x * U, 13 * U); c.stroke(); }
+  c.rotate(e.ang);
+  c.fillStyle = 'rgba(0,0,0,0.15)'; rr(c, 6 * U, 1 * U, e.boom + 8 * U, 6 * U, 3 * U); c.fill();
+  c.fillStyle = '#d99a00'; rr(c, 4 * U, -3 * U, e.boom, 6 * U, 3 * U); c.fill();
+  c.fillStyle = '#f4b400'; rr(c, 4 * U, -2 * U, e.boom - 2 * U, 3 * U, 1.5 * U); c.fill();
+  const bx = 4 * U + e.boom - 3 * U, bl = 9 * U * (1 - 0.35 * e.curl);
+  c.fillStyle = '#666'; rr(c, bx, -6 * U, bl, 12 * U, 2 * U); c.fill();
+  if (e.load > 0.05){ c.fillStyle = '#8b5a2b'; circle(c, bx + bl / 2, 0, 4.5 * U * e.load); c.fill(); }
+  c.fillStyle = '#f4b400'; rr(c, -14 * U, -11 * U, 24 * U, 22 * U, 4 * U); c.fill();
+  c.fillStyle = '#555'; rr(c, -15 * U, -10 * U, 6 * U, 20 * U, 2 * U); c.fill();
+  c.fillStyle = '#bfe3ff'; rr(c, 0, -10 * U, 8 * U, 8 * U, 2 * U); c.fill();
+  c.fillStyle = blink() ? '#ffb000' : '#a86b00'; circle(c, -4 * U, 4 * U, 2 * U); c.fill();
+  c.restore();
+}
+function drawCrane(c){
+  if (!crane) return;
+  const J = crane.J, cr = crane;
+  c.save(); siteFrame(c); c.translate(cr.cu, cr.cw);
+  const hu = Math.cos(cr.ang) * cr.r, hw = Math.sin(cr.ang) * cr.r, d = cr.depth;
+  // shadows on the ground
+  c.save(); c.translate(9 * U, 12 * U); c.rotate(cr.ang); c.fillStyle = 'rgba(0,0,0,0.13)'; c.fillRect(-J * 0.32, -3 * U, J * 1.32, 6 * U); c.restore();
+  if (cr.carry){
+    const sz = 9 * U;
+    c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, hu - sz / 2 + (1 - d) * 7 * U, hw - sz / 2 + (1 - d) * 9 * U, sz, sz, 1.5 * U); c.fill();
+    const s2 = sz * (1.15 - 0.2 * d);
+    c.fillStyle = cr.col; rr(c, hu - s2 / 2, hw - s2 / 2, s2, s2, 1.5 * U); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.3)'; rr(c, hu - s2 / 2 + 1.5 * U, hw - s2 / 2 + 1.5 * U, s2 * 0.4, s2 * 0.4, 1 * U); c.fill();
+  }
+  c.fillStyle = '#333'; circle(c, hu, hw, (2.4 - d) * U); c.fill();
+  // mast
+  c.fillStyle = '#e9b10a'; rr(c, -7 * U, -7 * U, 14 * U, 14 * U, 2 * U); c.fill();
+  c.strokeStyle = '#b8860b'; c.lineWidth = 1.2 * U;
+  c.beginPath(); c.moveTo(-7 * U, -7 * U); c.lineTo(7 * U, 7 * U); c.moveTo(7 * U, -7 * U); c.lineTo(-7 * U, 7 * U); c.stroke();
+  c.rotate(cr.ang);
+  c.fillStyle = '#f4c20d'; c.fillRect(-J * 0.32, -3 * U, J * 0.32, 6 * U);
+  c.fillStyle = '#777'; rr(c, -J * 0.32 - 2 * U, -5 * U, 10 * U, 10 * U, 2 * U); c.fill();
+  c.fillStyle = '#f4c20d'; c.fillRect(0, -3 * U, J, 6 * U);
+  c.strokeStyle = '#b8860b'; c.lineWidth = 1 * U;
+  c.beginPath(); c.moveTo(0, -3 * U);
+  for (let x = 0, k = 0; x <= J; x += 6 * U, k++) c.lineTo(x, k % 2 ? 3 * U : -3 * U);
+  c.stroke(); c.strokeRect(0, -3 * U, J, 6 * U);
+  c.fillStyle = '#bfe3ff'; rr(c, -1 * U, 3 * U, 7 * U, 5 * U, 1 * U); c.fill();
+  c.fillStyle = '#444'; c.fillRect(cr.r - 3 * U, -4 * U, 6 * U, 8 * U);
+  c.fillStyle = '#e63946'; circle(c, J - 1 * U, 0, 1.6 * U); c.fill();
+  c.restore();
+}
+
+/* ================= roadworks ================= */
+function updateWorks(dt){
+  if (!works || works.ph < 14 * U) return;
+  works.bounce = Math.max(0, works.bounce - dt);
+  if (works.rpause > 0){ works.rpause -= dt; return; }
+  works.roller += works.rdir * 12 * U * dt * (going ? 1 : 0);
+  const lim = 38 * U;
+  if (Math.abs(works.roller) > lim){ works.roller = clamp(works.roller, -lim, lim); works.rdir *= -1; works.rpause = 1.2; }
+}
+/* ================= washes ================= */
+// walls and floor go in the cached background; arches, brushes and the spray are drawn over the vehicles every frame
+function washWalls(c, w, hl, hw, wall){
+  c.save(); c.translate(w.x, w.y); c.rotate(w.a);
+  for (const sy of [-1, 1]){
+    const y0 = sy > 0 ? hw - wall : -hw;
+    c.fillStyle = 'rgba(0,0,0,0.18)'; rr(c, -hl + 2 * U, y0 + 3 * U, hl * 2, wall, 2 * U); c.fill();
+    c.fillStyle = '#2d6cdf'; rr(c, -hl, y0, hl * 2, wall, 2 * U); c.fill();
+    c.fillStyle = '#9bd3ff'; c.fillRect(-hl + 4 * U, y0 + wall * 0.35, hl * 2 - 8 * U, wall * 0.3);
+  }
+  c.restore();
+}
+function drawWashBG(c){
+  if (carWash){
+    const w = carWash, hw = (ROAD_HALF + 9) * U;
+    c.save(); c.translate(w.x, w.y); c.rotate(w.a);
+    c.fillStyle = 'rgba(120,190,255,0.25)'; c.fillRect(-36 * U, -ROAD_HALF * U, 72 * U, ROAD_HALF * 2 * U); // wet road
+    c.fillStyle = '#4b5058'; for (const x of [-20, 0, 20]) c.fillRect((x - 3) * U, -(LANE + 3) * U, 6 * U, 6 * U); // drains
+    c.restore();
+    washWalls(c, w, 36 * U, hw, 7 * U);
+  }
+  if (trainWash) washWalls(c, trainWash, 52 * U, 26 * U, 7 * U);
+}
+function drawArch(c, w, hl, hw, time){
+  const spin = w.spin, on = w.busy > 0;
+  c.save(); c.translate(w.x, w.y); c.rotate(w.a);
+  for (const x of [-hl, hl]){
+    c.fillStyle = 'rgba(0,0,0,0.16)'; c.fillRect(x - 3 * U + 3 * U, -hw + 4 * U, 7 * U, hw * 2);
+    c.fillStyle = '#1f4fb0'; rr(c, x - 3.5 * U, -hw - 1 * U, 7 * U, hw * 2 + 2 * U, 2 * U); c.fill();
+    c.fillStyle = '#f4f4f4'; for (let y = -hw + 4 * U; y < hw - 3 * U; y += 8 * U) c.fillRect(x - 1 * U, y, 2 * U, 3 * U);
+  }
+  // spinning brushes on the walls, a spray bar in the middle, and a light that flashes while it's washing
+  for (const sy of [-1, 1]) for (const x of [-hl * 0.45, hl * 0.45]){
+    const bx = x, by = sy * (hw - 9 * U);
+    c.fillStyle = '#e63946'; circle(c, bx, by, 5.5 * U); c.fill();
+    c.strokeStyle = '#ffd6d9'; c.lineWidth = 1.4 * U;
+    for (let k = 0; k < 3; k++){ const a = spin * sy + k * TAU / 3; c.beginPath(); c.moveTo(bx, by); c.lineTo(bx + Math.cos(a) * 5 * U, by + Math.sin(a) * 5 * U); c.stroke(); }
+  }
+  c.fillStyle = '#c9ccd1'; c.fillRect(-1.2 * U, -hw + 4 * U, 2.4 * U, hw * 2 - 8 * U);
+  c.fillStyle = on && Math.floor(time * 4) % 2 ? '#7fd3ff' : '#2a6e9e'; circle(c, 0, -hw - 1 * U, 3 * U); c.fill();
+  c.restore();
+}
+function drawWashes(c, time){
+  if (carWash) drawArch(c, carWash, 36 * U, (ROAD_HALF + 9) * U, time);
+  if (trainWash) drawArch(c, trainWash, 52 * U, 26 * U, time);
+}
+function drawWorks(c, time){
+  if (!works) return;
+  c.save(); c.translate(works.x, works.y); c.rotate(works.a);
+  if (works.ph >= 14 * U){
+    const y = (ROAD_HALF + 9) * U + works.ph / 2, x = works.roller, s = 1 + Math.sin(works.bounce * 24) * works.bounce * 0.3;
+    c.save(); c.translate(x, y); if (works.rdir < 0) c.scale(-1, 1); c.scale(s, s);
+    c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, -10 * U, -6 * U, 24 * U, 16 * U, 3 * U); c.fill();
+    c.fillStyle = '#888'; rr(c, 6 * U, -9 * U, 8 * U, 18 * U, 3 * U); c.fill();
+    c.fillStyle = '#aaa'; c.fillRect(7 * U, -8 * U, 2 * U, 16 * U);
+    c.fillStyle = '#f4b400'; rr(c, -12 * U, -7 * U, 18 * U, 14 * U, 3 * U); c.fill();
+    c.fillStyle = '#e0a100'; rr(c, -10 * U, -5 * U, 8 * U, 10 * U, 2 * U); c.fill();
+    c.fillStyle = '#222'; rr(c, -12 * U, -9 * U, 7 * U, 3 * U, 1 * U); c.fill(); rr(c, -12 * U, 6 * U, 7 * U, 3 * U, 1 * U); c.fill();
+    c.fillStyle = blink() ? '#ffb000' : '#a86b00'; circle(c, -6 * U, 0, 1.8 * U); c.fill();
+    c.restore();
+  }
+  for (let t = -60; t <= 60; t += 20){
+    const y = (ROAD_HALF + 5) * U, x = t * U;
+    c.fillStyle = '#333'; rr(c, x - 4 * U, y - 4 * U, 8 * U, 8 * U, 1.5 * U); c.fill();
+    c.fillStyle = '#ff6b1a'; circle(c, x, y, 3.4 * U); c.fill();
+    c.fillStyle = '#fff'; circle(c, x, y, 2 * U); c.fill();
+    c.fillStyle = '#ff6b1a'; circle(c, x, y, 1 * U); c.fill();
+    if (Math.abs(t) === 60){ c.fillStyle = (Math.floor(time * 3) % 2 === 0) ? '#ffc400' : '#8a6a00'; circle(c, x, y, 1.6 * U); c.fill(); }
+  }
+  c.restore();
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `${Math.round(20 * U)}px ${EF}`;
+  c.fillText('👷', works.worker.x, works.worker.y + Math.sin(time * 2.3) * 1.5 * U);
+}
+
+/* ================= particles ================= */
+const puffs = [], fx = [];
+function spawnPuff(x, y){
+  if (puffs.length > 220) puffs.shift();
+  puffs.push({ x, y, r: 4 * U, vr: rand(12, 18) * U, vx: rand(-6, 6) * U, vy: rand(-12, -4) * U, life: 0, max: rand(1.1, 1.6) });
+}
+function coins(x, y, n){ // gold coins flying out of the robber's bag
+  for (let i = 0; i < n; i++){
+    const a = rand(0, TAU), sp = rand(40, 110) * U;
+    fx.push({ t: 'dot', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40 * U, life: 0, max: rand(0.8, 1.2), r: rand(3, 4.5) * U, col: pick(['#ffd23f', '#f4b400', '#ffe066']) });
+  }
+}
+function sparkle(x, y, n){
+  for (let i = 0; i < n; i++){
+    const a = rand(0, TAU), sp = rand(40, 120) * U;
+    fx.push({ t: 'dot', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0, max: rand(0.4, 0.8), r: rand(2, 4) * U, col: pick(['#fff', '#ffe066', '#ff8fab', '#9bf6ff']) });
+  }
+}
+function emoji(x, y, ch, n, size){
+  for (let i = 0; i < n; i++) fx.push({ t: 'txt', ch, x: x + rand(-10, 10) * U, y, vx: rand(-40, 40) * U, vy: rand(-90, -50) * U, life: 0, max: rand(0.9, 1.3), size: (size || 22) * U, g: 90 * U });
+}
+
+/* ================= input ================= */
+const drags = new Map();
+const duck = { x: -999, y: -999, flap: 0 };
+function localPt(e){ const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+function hitTrain(x, y){
+  const pad = Math.max(12 * U, 10), hw = WID * U / 2 + pad;
+  let best = null, bd = 1e18;
+  for (const tr of trains) for (let k = 0; k < tr.geo.length; k++){
+    const g = tr.geo[k], dx = x - g.x, dy = y - g.y, ca = Math.cos(-g.a), sa = Math.sin(-g.a);
+    const lx = dx * ca - dy * sa, ly = dx * sa + dy * ca;
+    if (Math.abs(lx) < g.len / 2 + pad && Math.abs(ly) < hw){ const d = dx * dx + dy * dy; if (d < bd){ bd = d; best = { tr, k }; } }
+  }
+  return best;
+}
+function hitVehicle(x, y){
+  const pad = Math.max(8 * U, 8);
+  let best = null, bd = 1e18;
+  for (const v of vehicles){
+    const T = VT[v.type], dx = x - v.x, dy = y - v.y, ca = Math.cos(-v.a), sa = Math.sin(-v.a);
+    const lx = dx * ca - dy * sa, ly = dx * sa + dy * ca;
+    if (Math.abs(lx) < T.len * U / 2 + pad && Math.abs(ly) < T.wid * U / 2 + pad){ const d = dx * dx + dy * dy; if (d < bd){ bd = d; best = v; } }
+  }
+  return best;
+}
+// site machines he can drive: the bulldozer, the digger (body or bucket) and the crane (hook or mast)
+function hitMachine(x, y){
+  if (!site) return null;
+  const q = site.fromW(x, y), pad = Math.max(6 * U, 6);
+  if (dozer){
+    const c = Math.cos(dozer.a), s = Math.sin(dozer.a), du = q.u - dozer.u, dw = q.w - dozer.w;
+    if (Math.abs(du * c + dw * s) < 21 * U + pad && Math.abs(-du * s + dw * c) < 15 * U + pad) return dozer;
+  }
+  if (ex){ const b = exBucket(); if (Math.hypot(q.u - ex.u, q.w - ex.w) < 24 * U || Math.hypot(q.u - b.u, q.w - b.w) < 12 * U) return ex; }
+  if (crane){ const h = craneHook(); if (Math.hypot(q.u - h.u, q.w - h.w) < 16 * U || Math.hypot(q.u - crane.cu, q.w - crane.cw) < 14 * U) return crane; }
+  return null;
+}
+function hitSign(x, y){
+  for (const sg of signs){ const q = site.toW(sg.u, sg.w); if (Math.hypot(x - q.x, y - q.y) < Math.max((SIGN_R + 5) * U, 22)) return sg; }
+  return null;
+}
+function pressSign(sg){
+  sg.bounce = 0.5; sClick();
+  const q = site.toW(sg.u, sg.w);
+  if (sg.kind === 'crane'){
+    if (!crane){ sg.shake = 0.4; sNo(); return; }
+    crane.boost = 12; sClank(); sparkle(q.x, q.y, 12);
+    if (build.done) sCheer();
+    return;
+  }
+  if (sg.kind === 'col'){
+    // any colour, then each colour in turn; a block already on the hook changes colour too
+    build.pick = build.pick >= TOY.length - 1 ? -1 : build.pick + 1;
+    sColour(build.pick); sparkle(q.x, q.y, 10);
+    if (crane && crane.carry) crane.col = nextCol();
+    return;
+  }
+  const here = vehicles.find(v => v.waiting > 0 && v.type === signType(sg.kind));
+  if (here){ sendOff(here); here.bounce = 0.5; sparkle(here.x, here.y, 16); sparkle(q.x, q.y, 10); return; } // the big "go" button
+  const v = callTruck(signType(sg.kind));
+  if (!v){ sg.bounce = 0; sg.shake = 0.4; sNo(); return; }
+  sHonk(); v.bounce = 0.5; sparkle(v.x, v.y, 12); sparkle(q.x, q.y, 10);
+}
+function grabMachine(m){
+  m.held++;
+  if (m === crane){ m.last = null; sClank(); }
+  else sRumble();
+}
+function tapMachine(m, x, y){
+  if (m === crane){ crane.boost = 5; sClank(); }
+  else if (m === ex){ ex.boost = 5; sRumble(); }
+  else if (m === dozer){ dozer.bounce = 0.5; sRumble(); }
+  sparkle(x, y, 8);
+}
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault(); if (bed.asleep) return; audio();
+  const p = localPt(e), hit = hitTrain(p.x, p.y);
+  if (hit){
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+    const tr = hit.tr, near = nearestS(p.x, p.y, tr.head, TL * 0.3);
+    drags.set(e.pointerId, { tr, k: hit.k, off: tr.head - near, sx: p.x, sy: p.y, moved: false, lastT: performance.now() });
+    tr.drag++; tr.pause = 0;
+    return;
+  }
+  const sg = site && hitSign(p.x, p.y);
+  if (sg){ pressSign(sg); return; }
+  const m = hitMachine(p.x, p.y);
+  if (m){
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+    drags.set(e.pointerId, { m, sx: p.x, sy: p.y, moved: false });
+  } else tapScene(p.x, p.y);
+});
+cv.addEventListener('pointermove', e => {
+  if (bed.asleep) return;
+  const d = drags.get(e.pointerId); if (!d) return;
+  const p = localPt(e);
+  if (!d.moved && Math.hypot(p.x - d.sx, p.y - d.sy) > 9){ d.moved = true; if (d.m) grabMachine(d.m); }
+  if (!d.moved) return;
+  if (d.m){ if (site){ const q = site.fromW(p.x, p.y); d.m.tu = q.u; d.m.tw = q.w; } return; }
+  const tr = d.tr, n = nearestS(p.x, p.y, tr.head - d.off, TL * 0.15);
+  const newHead = n + d.off, delta = newHead - tr.head;
+  const now = performance.now(), dt = Math.max(0.008, (now - d.lastT) / 1000); d.lastT = now;
+  tr.dragV = Math.max(tr.dragV, Math.min(260 * U, Math.abs(delta) / dt));
+  tr.head = mod(newHead);
+  pushFrom(tr, delta);
+});
+function endDrag(e){
+  const d = drags.get(e.pointerId); if (!d) return;
+  drags.delete(e.pointerId);
+  if (d.m){
+    if (!d.moved) tapMachine(d.m, d.sx, d.sy);
+    else { d.m.held = Math.max(0, d.m.held - 1); if (d.m === ex && ex && !ex.held) digRelease(); }
+    return;
+  }
+  d.tr.drag = Math.max(0, d.tr.drag - 1);
+  if (!d.moved){
+    const car = d.tr.cars[d.k];
+    if (car.e) tootTrain(d.tr);
+    else { car.jump = 0.7; sBoing(); const g = d.tr.geo[d.k]; if (g) emoji(g.x, g.y - 10 * U, '❤️', 2, 18); }
+  }
+}
+cv.addEventListener('pointerup', endDrag);
+cv.addEventListener('pointercancel', endDrag);
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+function tapScene(x, y){
+  if (Math.hypot(x - duck.x, y - duck.y) < 26 * U){ sQuack(); duck.flap = 0.6; emoji(duck.x, duck.y - 12 * U, '💦', 2, 16); return; }
+  // a wash: bubbles all over whatever's inside
+  for (const [w, hl, hw] of [[carWash, 38 * U, (ROAD_HALF + 10) * U], [trainWash, 54 * U, 28 * U]]) if (w && inWash(w, x, y, hl, hw)){
+    sSpray(); sBubbles(); w.busy = 1.2;
+    for (let i = 0; i < 26; i++){ const t = rand(-1, 1) * hl * 0.8, n = rand(-1, 1) * hw * 0.6; bubbles(w.x + Math.cos(w.a) * t - Math.sin(w.a) * n, w.y + Math.sin(w.a) * t + Math.cos(w.a) * n, 1, 3 * U); }
+    for (const v of vehicles) if (inWash(w, v.x, v.y, hl, hw)){ v.shine = 5; v.bounce = 0.5; }
+    for (const tr of trains) if (tr.geo.some(g => inWash(w, g.x, g.y, hl, hw))){ tr.shine = 5; tr.bounce = 0.6; }
+    return;
+  }
+  for (const f of rob.figs) if (Math.hypot(x - f.x, y - f.y) < 18 * U){
+    if (f.who === 'robber') sGiggle(); else { sHello(); emoji(f.x, f.y - 16 * U, '👋', 1, 22); }
+    rob.fb[f.who] = 0.35; return;
+  }
+  const v = hitVehicle(x, y);
+  if (!v && bank && inBank(x, y, 6 * U)){ tapBank(); return; }
+  if (v){
+    if (v.route === siteRoute && v.seg >= 2 && v.seg <= 4) sendOff(v); // in the site: tip or pour now, then off it goes
+    else if (v.robber) tapRobber(v);
+    else if (v === rob.cop && rob.v) v.rider === 'robber' ? sGiggle() : sWhoop();
+    else vehicleSound(v);
+    v.bounce = 0.5; sparkle(v.x, v.y, 8); return;
+  }
+  if (site){
+    const q = site.fromW(x, y);
+    if (crane){
+      const hu = crane.cu + Math.cos(crane.ang) * crane.r, hw = crane.cw + Math.sin(crane.ang) * crane.r;
+      if (Math.hypot(q.u - crane.cu, q.w - crane.cw) < 16 * U || Math.hypot(q.u - hu, q.w - hw) < 14 * U || (site.stack && Math.hypot(q.u - site.stack.u, q.w - site.stack.w) < 16 * U)){
+        crane.boost = 5; sClank(); sparkle(x, y, 8); return;
+      }
+    }
+    if (ex && Math.hypot(q.u - ex.u, q.w - ex.w) < 24 * U){ ex.boost = 5; sRumble(); sparkle(x, y, 8); return; }
+    if (site.bld){
+      const b = site.bld;
+      if (q.u > b.u0 - 4 * U && q.u < b.u1 + 4 * U && q.w > b.w0 - 4 * U && q.w < b.w1 + 4 * U){
+        if (build.done){ sCheer(); sparkle(x, y, 24); } else { addBlock(nextCol(), false, q); sparkle(x, y, 6); }
+        return;
+      }
+    }
+    for (const wk of site.workers){ const p = site.toW(wk.u, wk.w); if (Math.hypot(x - p.x, y - p.y) < 16 * U){ sHello(); emoji(p.x, p.y - 12 * U, '👋', 1, 24); return; } }
+    const pile = site.piles.find(p => !p.fade && Math.hypot(q.u - p.u, q.w - p.w) < p.s * U + 4 * U);
+    if (pile){
+      sNoise('lowpass', 900, 0.4, 0.15);
+      const cols = pile.dirt ? ['#8b5a2b', '#a06a35', '#6b4423'] : ['#e9c46a', '#d4a64a', '#f4d58d'];
+      for (let i = 0; i < 14; i++){ const a = rand(0, TAU), s = rand(30, 80) * U; fx.push({ t: 'dot', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0, max: 0.5, r: rand(1.5, 3) * U, col: pick(cols) }); }
+      return;
+    }
+    if (site.cabin && Math.hypot(q.u - site.cabin.u, q.w - site.cabin.w) < 18 * U){ sKnock(); setTimeout(() => emoji(x, y - 10 * U, pick(['☕', '👷', '👋']), 1, 24), 380); return; }
+    if (siteDist(x, y) < 1){ sPop(); sparkle(x, y, 10); return; }
+  }
+  if (works){
+    if (Math.hypot(x - works.worker.x, y - works.worker.y) < 16 * U){ sHello(); emoji(works.worker.x, works.worker.y - 12 * U, '👋', 1, 24); return; }
+    if (works.ph >= 14 * U){
+      const r = works.toW(works.roller, (ROAD_HALF + 9) * U + works.ph / 2);
+      if (Math.hypot(x - r.x, y - r.y) < 18 * U){ sReverse(); works.bounce = 0.5; sparkle(r.x, r.y, 8); return; }
+    }
+  }
+  if (pond && ((x - pond.x) / pond.rx) ** 2 + ((y - pond.y) / pond.ry) ** 2 < 1){
+    sBloop(); for (let i = 0; i < 3; i++) puffs.push({ ring: true, x, y, life: -i * 0.18, max: 1.1, r: 4 * U });
+    return;
+  }
+  for (const t of trees) if (Math.hypot(x - t.x, y - t.y) < t.r + 8 * U){
+    t.wig = 0.9; sRustle(); emoji(t.x, t.y, t.apples ? '🍎' : '🍃', 2, 16);
+    if (Math.random() < 0.3) emoji(t.x, t.y - t.r, '🐦', 1, 22);
+    return;
+  }
+  for (const h of houses) if (Math.hypot(x - h.x, y - h.y) < h.r + 6 * U){
+    sKnock(); setTimeout(() => emoji(h.x, h.y - h.r, pick(['🐈', '👋', '🐕', '❤️']), 1, 26), 380); return;
+  }
+  if (Math.hypot(x - station.cx, y - station.cy) < 48 * U){ sDing(); sparkle(station.cx, station.cy, 12); return; }
+  const onRoad = pMinD2(ROAD, x, y, 2) < ((ROAD_HALF + 3) * U) ** 2 || (spur && [spur.CE, spur.CX, spur.SI, spur.SO].some(P => pMinD2(P, x, y, 2) < ((ROAD_HALF + 3) * U) ** 2));
+  if (onRoad || Math.sqrt(minD2(x, y)) < 24 * U || (tunnel && Math.hypot(x - tunnel.cx, y - tunnel.cy) < 50 * U)){ sPop(); sparkle(x, y, 14); return; }
+  sPop(); sparkle(x, y, 8);
+  flowers.push({ nx: x / W, ny: y / H, e: pick(FLOWERS), born: performance.now() / 1000 });
+  if (flowers.length > 70) flowers.shift();
+}
+
+/* ================= buttons ================= */
+function onPress(el, fn){
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault(); e.stopPropagation(); if (bed.asleep && !BED_PARENT.includes(el.id)) return; audio();
+    el.classList.add('pressed'); setTimeout(() => el.classList.remove('pressed'), 140); fn();
+  });
+  el.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !(bed.asleep && !BED_PARENT.includes(el.id))){ e.preventDefault(); audio(); fn(); } });
+  el.addEventListener('click', e => e.preventDefault());
+}
+function shakeBtn(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+onPress($('bAdd'), () => {
+  const tr = addTrain();
+  if (!tr){ sNo(); shakeBtn($('bAdd')); return; }
+  sAdd(); tr.bounce = 0.6; const g = tr.geo[0]; if (g) sparkle(g.x, g.y, 20);
+});
+onPress($('bRemove'), () => {
+  let idx = trains.length - 1;
+  while (idx >= 0 && trains[idx].drag) idx--;
+  if (trains.length <= 1 || idx < 0){ sNo(); shakeBtn($('bRemove')); return; }
+  const tr = trains.splice(idx, 1)[0];
+  for (const [id, d] of drags) if (d.tr === tr) drags.delete(id);
+  for (const g of tr.geo) sparkle(g.x, g.y, 10);
+  if (tr.geo[0]) emoji(tr.geo[0].x, tr.geo[0].y, '👋', 1, 26);
+  sBye();
+});
+onPress($('bHorn'), () => trains.forEach((tr, i) => setTimeout(() => tootTrain(tr), i * 170)));
+onPress($('bLight'), () => {
+  going = !going; sClick();
+  const tl = $('bLight').firstElementChild; tl.classList.toggle('go', going); tl.classList.toggle('stop', !going);
+});
+onPress($('bSpeed'), () => { speedIdx ^= 1; $('bSpeed').textContent = speedIdx ? '🐇' : '🐢'; speedIdx ? sFast() : sSlow(); });
+onPress($('bSky'), () => { nightT = nightT ? 0 : 1; $('bSky').textContent = nightT ? '☀️' : '🌙'; nightT ? sNight() : sDay(); });
+onPress($('bBell'), () => { bellMuted = !bellMuted; $('bBell').textContent = bellMuted ? '🔕' : '🔔'; });
+onPress($('bMute'), () => { muted = !muted; $('bMute').textContent = muted ? '🔇' : '🔊'; if (muted && AC) AC.suspend(); else audio(); });
+// 🔄 (press and hold 1.2 s): everything back to how it started (trains, vehicles, the site and its machines, flowers).
+// The switches (sound, bell, day/night, speed, traffic light) stay as they are.
+let resetHold = 0;
+const bReset = $('bReset');
+bReset.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); audio(); sClick(); resetHold = NOW || 1e-3; bReset.classList.add('hold'); });
+for (const t of ['pointerup', 'pointercancel', 'pointerleave']) bReset.addEventListener(t, () => { resetHold = 0; bReset.classList.remove('hold'); });
+function resetAll(){
+  drags.clear();
+  trains.length = 0; flowers.length = 0; fx.length = 0; puffs.length = 0;
+  build.blocks = []; build.fill = []; build.done = false; build.doneT = 0; build.pick = -1;
+  Object.assign(xing, { active: false, bar: 0, bellT: 0, anyInZone: false, waiting: false, waitT: 0, hold: false, holdT: 0, went: false });
+  W = 0; resize(); // rebuilds the whole world, as on a fresh start
+  addTrain(); addTrain();
+  sAdd(); sparkle(W / 2, H / 2, 40);
+}
+const bFull = $('bFull');
+// opened from the home screen it's already full screen, and browser full screen there is only something to fall out of
+const homeApp = (window.navigator && window.navigator.standalone) || (window.matchMedia && ['standalone', 'fullscreen'].some(m => window.matchMedia(`(display-mode: ${m})`).matches));
+if (document.fullscreenEnabled && !homeApp){
+  bFull.hidden = false;
+  onPress(bFull, () => { try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); } catch (_) {} });
+}
+
+/* ================= bedtime ================= */
+// A play timer the parent sets (10 minutes to start with), so the game ends itself instead of being taken away.
+// It winds down gently: a soft chime a minute before, then night falls, a lullaby plays, everything stops, and a
+// sleepy night-time cover (a moon, twinkling stars, 💤) fades in over the whole game. Taps do nothing then.
+// ⏰ in the parent corner (press and hold 1.2 s) steps the time through 10, 20 and 30 minutes and off, and wakes
+// everything up again once it's asleep. Only time with the game on screen counts. It's saved with the setting and
+// shared with the other game (the home-screen app can switch between them), and starts afresh after a 20-minute break.
+// (The same block is in index.html and builder.html.)
+const BED_KEY = 'choochoo-bedtime-v1', BED_OPTS = [10, 20, 30, 0], BED_BREAK = 20 * 60 * 1000;
+const bed = { min: 10, used: 0, asleep: false, t: 0, warned: false, saveT: 0, hold: 0, wall: Date.now() };
+const bBed = $('bBed'), sleepEl = $('sleep');
+const BED_PARENT = ['bBed', 'bBell', 'bMute', 'bFull']; // the only buttons that still work while it's asleep
+const sBedWarn = () => { tone(1047, 'sine', 0, 0.02, 0.8, 0.07); tone(784, 'sine', 0.35, 0.02, 1.1, 0.07); };
+const sLullaby = () => [392, 392, 587, 587, 659, 659, 587, 523, 523, 494, 494, 440, 440, 392].forEach((f, i) => tone(f, 'sine', i * 0.42 + (i >= 7 ? 0.42 : 0), 0.04, i === 6 || i === 13 ? 1.1 : 0.6, 0.1));
+function bedSave(){ try { window.localStorage.setItem(BED_KEY, JSON.stringify({ min: bed.min, used: bed.used, asleep: bed.asleep, at: Date.now() })); } catch (_) {} }
+function bedLabel(){ bBed.textContent = '⏰' + (bed.min || '∞'); }
+function setLight(){ const tl = $('bLight').firstElementChild; tl.classList.toggle('go', going); tl.classList.toggle('stop', !going); }
+function goToSleep(quiet){
+  bed.asleep = true; bed.t = quiet ? 10 : 0; bedSave();
+  nightT = 1; if (quiet) night = 1; $('bSky').textContent = '☀️';
+  going = false; setLight();
+  sleepEl.classList.add('show'); // (it takes taps straight away, and fades in a moment later)
+  if (quiet) sleepEl.classList.add('on'); else sLullaby();
+}
+function wakeUp(){
+  bed.asleep = false; bed.used = 0; bed.warned = false; bed.t = 0; bedSave();
+  sleepEl.classList.remove('show', 'on');
+  nightT = 0; $('bSky').textContent = '🌙'; going = true; setLight(); sDay();
+}
+function nextBedtime(){
+  bed.min = BED_OPTS[(BED_OPTS.indexOf(bed.min) + 1) % BED_OPTS.length]; bed.used = 0; bed.warned = false;
+  bedLabel(); bedSave(); tone(bed.min ? 440 + bed.min * 20 : 330, 'sine', 0, 0.01, 0.3, 0.15);
+}
+// first thing every frame: true once it's asleep and everything has stopped (the rest of the update is skipped)
+function bedTick(dt){
+  const now = Date.now();
+  if (now - bed.wall > BED_BREAK){ bed.used = 0; bed.warned = false; if (bed.asleep) wakeUp(); } // back after a long break
+  bed.wall = now;
+  if (bed.hold && NOW - bed.hold > 1.2){ bed.hold = 0; bBed.classList.remove('hold'); bed.asleep ? wakeUp() : nextBedtime(); }
+  if (bed.asleep){
+    bed.t += dt;
+    if (bed.t > 2.5) sleepEl.classList.add('on');
+    return bed.t > 9; // stopped, and the lullaby's finished
+  }
+  if (!bed.min) return false;
+  bed.used += dt;
+  if ((bed.saveT -= dt) <= 0){ bed.saveT = 5; bedSave(); }
+  const left = bed.min * 60 - bed.used;
+  if (!bed.warned && left < 60){ bed.warned = true; sBedWarn(); }
+  if (left <= 0) goToSleep(false);
+  return false;
+}
+bBed.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); audio(); bed.hold = NOW || 1e-3; bBed.classList.add('hold'); });
+for (const t of ['pointerup', 'pointercancel', 'pointerleave']) bBed.addEventListener(t, () => { bed.hold = 0; bBed.classList.remove('hold'); });
+window.addEventListener('pagehide', bedSave);
+try { // carry on from the other game (or from a moment ago), unless it's been a long break
+  const st = JSON.parse(window.localStorage.getItem(BED_KEY) || 'null');
+  if (st){
+    if (BED_OPTS.includes(st.min)) bed.min = st.min;
+    if (Date.now() - st.at < BED_BREAK){ bed.used = st.used || 0; if (st.asleep) goToSleep(true); }
+  }
+} catch (_) {}
+bedLabel();
+
+/* ================= loop ================= */
+function updateCrossing(dt){
+  if (!spur){ xing.active = false; xing.bar = 0; return; }
+  // Trains on (or just past the stop point of) the crossing always keep it closed. Approaching trains
+  // close it too, unless a road vehicle has waited a while: then trains hold at the stop point so the
+  // road gets a turn (otherwise lots of trains can starve the site trucks forever).
+  // A train up to 2U past the stop point is still obeying the signal (it stays put there, see update), so it counts
+  // as approaching, not on the crossing. (With "on" starting at 0.5U, a train that overshot into that sliver held the
+  // barriers down while it waited for them: a jam for ever. The traffic sim caught it.)
+  const stopPt = spur.S - (ROAD_HALF + 6) * U;
+  const occupying = trains.some(tr => { const d = mod(tr.head - stopPt); return d > 2 * U && d < trainLen(tr) + (ROAD_HALF + 32) * U; });
+  const approaching = trains.some(tr => mod(tr.head - (spur.S - 130 * U)) <= 130 * U - (ROAD_HALF + 6) * U + 2 * U);
+  xing.waitT = xing.waiting ? xing.waitT + dt : 0;
+  // The hold lasts till a vehicle has actually been over (as in the builder). It used to end the moment nobody was
+  // waiting, which was also the moment the barriers finished lifting and the trucks set off, so down they came again
+  // in front of them, over and over: with 5 trains a tipper could wait over a minute.
+  if (!xing.hold && xing.waitT > 5){ xing.hold = true; xing.holdT = 0; xing.went = false; }
+  if (xing.hold){ xing.holdT += dt; if (xing.anyInZone) xing.went = true; if ((xing.went && !xing.waiting && !xing.anyInZone && xing.holdT > 2) || xing.holdT > 15) xing.hold = false; }
+  xing.active = occupying || (approaching && !xing.hold);
+  const want = xing.active && !xing.anyInZone ? 1 : 0;
+  xing.bar = want > xing.bar ? Math.min(1, xing.bar + dt / 0.8) : Math.max(0, xing.bar - dt / 0.8);
+  if (xing.active || xing.bar > 0.02){ xing.bellT -= dt; if (xing.bellT <= 0){ sBell(); xing.bellT = 0.45; } } else xing.bellT = 0;
+}
+function update(dt){
+  if (bedTick(dt)) return;
+  if (resetHold && NOW - resetHold > 1.2){ resetHold = 0; bReset.classList.remove('hold'); resetAll(); return; }
+  night += clamp(nightT - night, -dt * 1.2, dt * 1.2);
+  const target = SPEEDS[speedIdx] * U;
+  const s = [...trains].sort((a, b) => mod(a.head) - mod(b.head));
+  for (let i = 0; i < s.length; i++){
+    const tr = s[i];
+    tr.bounce = Math.max(0, tr.bounce - dt); tr.cool = Math.max(0, tr.cool - dt);
+    tr.dragV *= Math.exp(-dt * 6);
+    for (const car of tr.cars) car.jump = Math.max(0, car.jump - dt);
+    if (tr.drag){ tr.v = 0; continue; }
+    tr.pause = Math.max(0, tr.pause - dt);
+    let want = going && tr.pause <= 0 ? target : 0;
+    if (s.length > 1){
+      const A = s[(i + 1) % s.length], gap = mod(A.head - tr.head) - trainLen(A) - 16 * U;
+      want = Math.min(want, Math.max(0, gap * 2.5));
+    }
+    if (spur && (xing.anyInZone || xing.bar < 0.95 || xing.hold)){
+      let d = mod(spur.S - (ROAD_HALF + 6) * U - tr.head);
+      if (d > TL - 2 * U) d = 0; // nose just past the stop point: stay put
+      if (d < 150 * U) want = Math.min(want, Math.max(0, d * 2.5));
+    }
+    tr.v = want < tr.v ? Math.max(want, tr.v - 320 * U * dt) : Math.min(want, tr.v + 70 * U * dt);
+    const prev = tr.head, step = tr.v * dt;
+    tr.head = mod(tr.head + step);
+    if (going && tr.cool <= 0 && step > 0 && mod(station.s - prev) < step){ tr.pause = 1.8; tr.cool = 5; sDing(); }
+    // train wash: about 2 in 5 trains stop with the engine in the shed for a scrub
+    if (trainWash && going && step > 0 && tr.pause <= 0 && mod(trainWash.sStop - prev) < step && Math.random() < 0.45){ tr.pause = 3.2; tr.wash = 3.2; sSpray(); }
+  }
+  for (const tr of trains){
+    computeGeo(tr);
+    if (tr.wash > 0){
+      tr.wash -= dt; if (trainWash) trainWash.busy = 0.3;
+      const g = tr.geo[0]; if (g && Math.random() < dt * 14) bubbles(g.x, g.y, 2, g.len * 0.45);
+      if (tr.wash <= 0){ tr.shine = 5; if (g) sparkle(g.x, g.y, 14); }
+    }
+    if (tr.shine > 0){ tr.shine -= dt; const g = tr.geo[0]; if (g && Math.random() < dt * 6) sparkle(g.x + rand(-20, 20) * U, g.y + rand(-10, 10) * U, 1); }
+    const speed = tr.drag ? tr.dragV : Math.max(tr.v, tr.dragV);
+    tr.smokeT -= dt;
+    if (speed > 6 * U && tr.smokeT <= 0 && !inTunnel(tr.head - 12 * U)){
+      const g = tr.geo[0], ch = g.len / 2 - 12 * U;
+      spawnPuff(g.x + Math.cos(g.a) * ch, g.y + Math.sin(g.a) * ch);
+      tr.smokeT = 0.34 - Math.min(1, speed / (150 * U)) * 0.22;
+    }
+  }
+  updateVehicles(dt);
+  updateTraffic(dt);
+  updateRobber(dt);
+  updateCrossing(dt);
+  updateSite(dt);
+  updateWorks(dt);
+  for (const w of [carWash, trainWash]) if (w){ w.busy = Math.max(0, w.busy - dt); w.spin += dt * (w.busy > 0 ? 14 : 0.6); }
+  for (let i = puffs.length - 1; i >= 0; i--){
+    const p = puffs[i]; p.life += dt;
+    if (p.life > p.max){ puffs.splice(i, 1); continue; }
+    if (!p.ring){ p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt; }
+  }
+  for (let i = fx.length - 1; i >= 0; i--){
+    const p = fx[i]; p.life += dt;
+    if (p.life > p.max){ fx.splice(i, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.g) p.vy += p.g * dt; else if (p.t === 'dot'){ p.vx *= Math.exp(-dt * 3); p.vy *= Math.exp(-dt * 3); }
+  }
+  if (fx.length > 400) fx.splice(0, fx.length - 400);
+  for (const t of trees) t.wig = Math.max(0, t.wig - dt);
+  duck.flap = Math.max(0, duck.flap - dt);
+}
+
+function drawTree(c, t){
+  const w = t.wig > 0 ? Math.sin(t.wig * 26) * t.wig * 0.2 : 0, r = t.r;
+  c.save(); c.translate(t.x, t.y);
+  c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(4 * U, 6 * U, r * 1.1, r * 0.95, 0, 0, TAU); c.fill();
+  c.rotate(w); c.scale(1 + w * 0.6, 1 - w * 0.4);
+  c.fillStyle = t.dark;
+  circle(c, -r * 0.38, r * 0.12, r * 0.72); c.fill(); circle(c, r * 0.38, r * 0.16, r * 0.72); c.fill(); circle(c, 0, -r * 0.3, r * 0.78); c.fill();
+  c.fillStyle = shade(t.dark, 0.25); circle(c, -r * 0.18, -r * 0.36, r * 0.42); c.fill();
+  if (t.apples){ c.fillStyle = '#e63946'; for (const [ax, ay] of [[0.3, -0.2], [-0.45, 0.25], [0.15, 0.45], [-0.1, -0.6]]){ circle(c, ax * r, ay * r, 2.4 * U); c.fill(); } }
+  c.restore();
+}
+function drawTunnel(c){
+  const { s0 } = tunnel, span = mod(tunnel.s1 - s0), pts = [];
+  for (let d = 0; d < span; d += STEP * 2) pts.push(at(s0 + d));
+  pts.push(at(s0 + span));
+  const line = () => { c.beginPath(); c.moveTo(pts[0].x, pts[0].y); for (const p of pts) c.lineTo(p.x, p.y); c.stroke(); };
+  c.lineCap = 'butt'; c.lineJoin = 'round';
+  c.save(); c.translate(3 * U, 5 * U); c.strokeStyle = 'rgba(0,0,0,0.2)'; c.lineWidth = 80 * U; line(); c.restore();
+  c.strokeStyle = '#4c9a3c'; c.lineWidth = 80 * U; line();
+  c.strokeStyle = '#5db34a'; c.lineWidth = 64 * U; line();
+  c.strokeStyle = '#6fc25a'; c.lineWidth = 38 * U; line();
+  const m = at(s0 + span / 2);
+  c.fillStyle = '#7fcf68'; circle(c, m.x - 6 * U, m.y - 6 * U, 16 * U); c.fill();
+  c.fillStyle = '#e63946'; circle(c, m.x + 10 * U, m.y + 8 * U, 3 * U); c.fill();
+  c.fillStyle = '#ffd23f'; circle(c, m.x - 14 * U, m.y + 14 * U, 3 * U); c.fill();
+  for (const [s, dir] of [[s0, -1], [s0 + span, 1]]){
+    const p = at(s);
+    c.save(); c.translate(p.x, p.y); c.rotate(p.a);
+    c.fillStyle = '#9a8e84'; rr(c, -6 * U, -32 * U, 12 * U, 64 * U, 4 * U); c.fill();
+    c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 1.2 * U;
+    for (const y of [-18, -4, 10, 24]){ c.beginPath(); c.moveTo(-6 * U, y * U); c.lineTo(6 * U, y * U); c.stroke(); }
+    c.fillStyle = '#2a211c'; rr(c, dir > 0 ? 2 * U : -6 * U, -18 * U, 4 * U, 36 * U, 2 * U); c.fill();
+    c.restore();
+  }
+}
+const xLights = [];
+function drawCrossing(c, time){
+  xLights.length = 0;
+  if (!spur) return;
+  const { o, p } = spur, warn = xing.active || xing.bar > 0.02, bl = Math.floor(time * 2.4) % 2 === 0;
+  const k = ease(xing.bar);
+  for (const side of [1, -1]){
+    const L = side > 0 ? { x: -o.y, y: o.x } : { x: o.y, y: -o.x };
+    const bx = p.x + o.x * side * BAR_R * U + L.x * (ROAD_HALF + 3) * U, by = p.y + o.y * side * BAR_R * U + L.y * (ROAD_HALF + 3) * U;
+    const len = (3 + 18 * k) * U, ang = Math.atan2(-L.y, -L.x);
+    c.save(); c.translate(bx, by); c.rotate(ang);
+    c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, 1 * U, 0, len, 4 * U, 2 * U); c.fill();
+    c.fillStyle = '#fff'; rr(c, 0, -2 * U, len, 4 * U, 2 * U); c.fill();
+    c.fillStyle = '#e63946';
+    for (let x = 4; x * U < len - 1 * U; x += 6) c.fillRect(x * U, -2 * U, Math.min(3 * U, len - x * U), 4 * U);
+    c.fillStyle = '#333'; rr(c, -7 * U, -8 * U, 5 * U, 16 * U, 2 * U); c.fill();
+    const l1 = warn && bl, l2 = warn && !bl;
+    c.fillStyle = l1 ? '#ff3b3b' : '#5c1f1f'; circle(c, -4.5 * U, -4.5 * U, 2.4 * U); c.fill();
+    c.fillStyle = l2 ? '#ff3b3b' : '#5c1f1f'; circle(c, -4.5 * U, 4.5 * U, 2.4 * U); c.fill();
+    c.fillStyle = '#333'; circle(c, 0, 0, 3.2 * U); c.fill();
+    c.restore();
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    if (l1) xLights.push({ x: bx + ca * -4.5 * U - sa * -4.5 * U, y: by + sa * -4.5 * U + ca * -4.5 * U });
+    if (l2) xLights.push({ x: bx + ca * -4.5 * U - sa * 4.5 * U, y: by + sa * -4.5 * U + ca * 4.5 * U });
+  }
+}
+function glow(c, x, y, r, col, a){
+  const g = c.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`);
+  c.fillStyle = g; circle(c, x, y, r); c.fill();
+}
+function draw(time){
+  const c = ctx;
+  c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  c.drawImage(bg, 0, 0, W, H);
+  for (const p of puffs) if (p.ring && p.life > 0){
+    const k = p.life / p.max;
+    c.strokeStyle = `rgba(255,255,255,${0.7 * (1 - k)})`; c.lineWidth = 2 * U;
+    c.beginPath(); c.ellipse(p.x, p.y, (4 + k * 34) * U, (3 + k * 22) * U, 0, 0, TAU); c.stroke();
+  }
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  if (pond){
+    const t = time * 0.33, vx = -Math.sin(t);
+    duck.x = pond.x + Math.cos(t) * pond.rx * 0.5; duck.y = pond.y + Math.sin(t * 1.3) * pond.ry * 0.35;
+    const b = duck.flap > 0 ? 1 + Math.sin(duck.flap * 25) * 0.18 : 1;
+    c.save(); c.translate(duck.x, duck.y); c.scale(vx > 0 ? -b : b, b);
+    c.font = `${Math.round(30 * U)}px ${EF}`; c.fillText('🦆', 0, 0); c.restore();
+  } else { duck.x = duck.y = -999; }
+  const now = performance.now() / 1000;
+  for (const f of flowers){
+    const k = Math.min(1, (now - f.born) / 0.35), s = k < 1 ? 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2) : 1;
+    c.font = `${Math.max(1, Math.round(22 * U * s))}px ${EF}`; c.fillText(f.e, f.nx * W, f.ny * H);
+  }
+  drawSite(c, time);
+  drawWorks(c, time);
+  drawBankAlarm(c, time);
+  for (const t of trees) drawTree(c, t);
+  for (const v of vehicles) drawVehicle(c, v);
+  drawFigures(c, time);
+  for (const tr of trains) drawTrain(c, tr, time);
+  drawWashes(c, time);
+  drawCrossing(c, time);
+  const pc = night > 0.5 ? '210,220,245' : '255,255,255';
+  for (const p of puffs) if (!p.ring){
+    c.fillStyle = `rgba(${pc},${0.6 * (1 - p.life / p.max)})`; circle(c, p.x, p.y, p.r); c.fill();
+  }
+  drawTunnel(c);
+  drawCrane(c);
+  if (night > 0.01){
+    c.fillStyle = `rgba(14,20,62,${0.6 * night})`; c.fillRect(0, 0, W, H);
+    c.save(); c.globalCompositeOperation = 'lighter';
+    for (const tr of trains){
+      if (inTunnel(tr.head) && inTunnel(tr.head - tr.geo[0].len)) continue;
+      const g = tr.geo[0], dx = Math.cos(g.a), dy = Math.sin(g.a), nx = g.x + dx * g.len / 2, ny = g.y + dy * g.len / 2;
+      if (!inTunnel(tr.head)){ glow(c, nx + dx * 32 * U, ny + dy * 32 * U, 46 * U, '255,226,140', 0.45 * night); glow(c, nx, ny, 10 * U, '255,240,200', 0.9 * night); }
+      if (!inTunnel(tr.head - g.len * 0.8)) glow(c, g.x - dx * g.len * 0.3, g.y - dy * g.len * 0.3, 16 * U, '255,190,110', 0.35 * night);
+    }
+    const b = blink();
+    for (const v of vehicles){
+      const dx = Math.cos(v.a), dy = Math.sin(v.a), fx0 = v.x + dx * v.half * U, fy0 = v.y + dy * v.half * U;
+      glow(c, fx0 + dx * 22 * U, fy0 + dy * 22 * U, 28 * U, '255,236,170', 0.38 * night);
+      glow(c, v.x - dx * v.half * U, v.y - dy * v.half * U, 8 * U, '255,60,60', 0.5 * night);
+      if (v.siren > 0) glow(c, v.x, v.y, 34 * U, '90,150,255', (b ? 0.7 : 0.3) * night);
+      if (v.called) glow(c, v.x, v.y, 30 * U, '255,176,0', (b ? 0.6 : 0.2) * night);
+    }
+    if (dozer){
+      const d = dozer, q = site.toW(d.u + Math.cos(d.a) * 40 * U, d.w + Math.sin(d.a) * 40 * U), bq = site.toW(d.u - Math.cos(d.a) * 7 * U, d.w - Math.sin(d.a) * 7 * U);
+      glow(c, q.x, q.y, 30 * U, '255,236,170', 0.35 * night);
+      glow(c, bq.x, bq.y, 12 * U, '255,176,0', (b ? 0.7 : 0.25) * night);
+    }
+    for (const l of xLights) glow(c, l.x, l.y, 16 * U, '255,60,60', 0.8 * night);
+    for (const w of [carWash, trainWash]) if (w) glow(c, w.x, w.y, 44 * U, '150,210,255', (w.busy > 0 ? 0.45 : 0.22) * night);
+    if (works && Math.floor(time * 3) % 2 === 0) for (const l of works.lamps) glow(c, l.x, l.y, 18 * U, '255,190,40', 0.7 * night);
+    if (crane){ const t = site.toW(crane.cu + Math.cos(crane.ang) * crane.J, crane.cw + Math.sin(crane.ang) * crane.J); glow(c, t.x, t.y, 12 * U, '255,60,60', (Math.floor(time * 1.5) % 2 ? 0.9 : 0.3) * night); }
+    if (site && site.cabin){ const q = site.toW(site.cabin.u, site.cabin.w); glow(c, q.x, q.y, 30 * U, '255,210,130', 0.35 * night); }
+    for (const h of houses) glow(c, h.x - Math.sin(h.rot) * h.r * 0.9, h.y + Math.cos(h.rot) * h.r * 0.9, 28 * U, '255,196,110', 0.45 * night);
+    for (const l of station.lamps) glow(c, l.x, l.y, 30 * U, '255,220,140', 0.5 * night);
+    if (bank){ glow(c, bank.door.x, bank.door.y, 26 * U, '255,210,130', 0.4 * night); if (bank.alarm > 0) glow(c, bank.lamp.x, bank.lamp.y, 30 * U, Math.floor(time * 8) % 2 ? '90,150,255' : '255,60,60', 0.8 * night); }
+    for (const f of flies){
+      const x = f.x + Math.sin(time * f.sp + f.ph) * 24 * U, y = f.y + Math.cos(time * f.sp * 1.3 + f.ph) * 18 * U;
+      glow(c, x, y, 8 * U, '215,255,120', night * (0.35 + 0.35 * Math.sin(time * 3 + f.ph)));
+    }
+    c.restore();
+  }
+  for (const p of fx){
+    const a = 1 - p.life / p.max;
+    if (p.t === 'dot'){ c.fillStyle = p.col; c.globalAlpha = a; circle(c, p.x, p.y, p.r); c.fill(); c.globalAlpha = 1; }
+    else if (p.t === 'bub'){
+      c.globalAlpha = Math.min(1, a * 1.6); const wob = Math.sin(p.life * 9 + p.r) * 1.2 * U;
+      c.fillStyle = 'rgba(215,240,255,0.5)'; circle(c, p.x + wob, p.y, p.r); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,0.95)'; c.lineWidth = 1.1 * U; c.stroke();
+      c.fillStyle = '#fff'; circle(c, p.x + wob - p.r * 0.35, p.y - p.r * 0.35, p.r * 0.25); c.fill(); c.globalAlpha = 1;
+    }
+    else {
+      c.globalAlpha = Math.min(1, a * 1.5);
+      c.font = p.font ? `bold ${Math.round(p.size)}px system-ui,sans-serif` : `${Math.round(p.size)}px ${EF}`;
+      if (p.col){ c.fillStyle = p.col; c.strokeStyle = '#fff'; c.lineWidth = 3 * U; c.strokeText(p.ch, p.x, p.y); }
+      c.fillText(p.ch, p.x, p.y); c.globalAlpha = 1;
+    }
+  }
+}
+
+function resize(){
+  const r = stage.getBoundingClientRect();
+  const nW = Math.max(1, Math.round(r.width)), nH = Math.max(1, Math.round(r.height));
+  if (nW === W && nH === H) return;
+  const oldTL = TL;
+  W = nW; H = nH; DPR = Math.min(window.devicePixelRatio || 1, 2);
+  U = clamp(Math.min(W, H) / 620, 0.5, 1.6);
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  buildRoadLoop(); buildTrack(); buildFeatures(); buildSite(); buildYard(); buildWorks(); buildWash(); buildSides(); buildBank(); buildPond(); buildScenery(); spawnVehicles(); drawBG();
+  if (oldTL > 0) for (const tr of trains){ tr.head = mod(tr.head * TL / oldTL); computeGeo(tr); }
+}
+if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
+window.addEventListener('resize', resize);
+resize();
+addTrain(); addTrain();
+
+let last = performance.now();
+function frame(now){
+  resize();
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+  NOW = now / 1000;
+  update(dt); draw(NOW);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* test hook: headless tests set window.__CHOO_DEBUG = true before loading */
+if (window.__CHOO_DEBUG) window.__g = {
+  bed, get going(){ return going; }, get night(){ return night; },
+  trains, vehicles, xing, build, addTrain, trainLen, mod: x => mod(x),
+  get spur(){ return spur; }, get site(){ return site; }, get crane(){ return crane; }, get ex(){ return ex; }, get U(){ return U; },
+  get dozer(){ return dozer; }, get carWash(){ return carWash; }, get trainWash(){ return trainWash; }, get signs(){ return signs; }, siteRoom, dozerFits, callTruck, craneHook, exBucket, resetAll,
+  get sides(){ return sides; }, get bank(){ return bank; }, rob, traffic, startRobber, startBankRobbery, policeInLane, KEYLEN: () => KEYLEN,
+};
+})();
+</script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});</script>
+<script>(() => {
+  const p = document.getElementById('parent'); if (!p) return;
+  const b = document.createElement('button'); b.className = 'pbtn'; b.textContent = "🛤️"; b.setAttribute('aria-label', "Track builder (press and hold)");
+  p.prepend(b);
+  let t = 0;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); b.classList.add('hold'); t = setTimeout(() => { location.href = "builder.html"; }, 1000); });
+  for (const k of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(k, () => { clearTimeout(t); b.classList.remove('hold'); });
+})();</script>
+</body>
+</html>
