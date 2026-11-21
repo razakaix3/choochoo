@@ -35,10 +35,11 @@ body{
 }
 #app{ height:100%; display:flex; flex-direction:column; }
 #stage{ flex:1; position:relative; min-height:0; background:#8acb68; }
-#c{ position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+#c, #c3{ position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+#c3[hidden]{ display:none; }
 #bar{
   flex:none; display:flex; justify-content:center; align-items:center;
-  gap:clamp(6px,2.4vw,24px); padding:12px 8px 14px;
+  gap:clamp(4px,1.9vw,24px); padding:12px 8px 14px;
   background:
     repeating-linear-gradient(92deg, transparent 0 22px, var(--shelf-grain) 22px 24px, transparent 24px 61px),
     var(--shelf);
@@ -46,19 +47,20 @@ body{
 }
 .btn{
   position:relative; flex:none;
-  width:clamp(46px,13.4vw,84px); height:clamp(46px,13.4vw,84px);
+  width:clamp(38px,11.6vw,84px); height:clamp(38px,11.6vw,84px);
   border-radius:50%; border:none; padding:0; margin:0; cursor:pointer;
-  font-size:clamp(22px,6.6vw,40px); line-height:1;
+  font-size:clamp(19px,5.8vw,40px); line-height:1;
   display:grid; place-items:center;
   box-shadow:inset 0 -6px 0 var(--btn-edge), inset 0 5px 0 rgba(255,255,255,.35), 0 5px 0 var(--shelf-edge);
   transition:transform .08s ease, box-shadow .08s ease;
 }
 .btn:focus-visible{ outline:4px solid #fff; outline-offset:3px; }
+.btn[hidden]{ display:none; }
 .btn.pressed{ transform:translateY(4px); box-shadow:inset 0 -3px 0 var(--btn-edge), inset 0 3px 0 rgba(255,255,255,.3), 0 1px 0 var(--shelf-edge); }
 .btn.shake{ animation:shake .35s ease; }
 @keyframes shake{ 20%{transform:translateX(-6px)} 40%{transform:translateX(6px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(3px)} }
 #bAdd{ background:var(--b1); } #bRemove{ background:var(--b6); } #bHorn{ background:var(--b2); }
-#bLight{ background:var(--b4); } #bSpeed{ background:var(--b3); } #bSky{ background:var(--b5); }
+#bLight{ background:var(--b4); } #bSpeed{ background:var(--b3); } #bSky{ background:var(--b5); } #bCam{ background:#ff5d8f; }
 .plus{
   position:absolute; top:-2px; right:-2px; width:36%; height:36%; border-radius:50%;
   background:#fff; color:var(--b1); font-weight:900; font-size:clamp(15px,4vw,24px);
@@ -97,6 +99,7 @@ body{
 <div id="app">
   <div id="stage">
     <canvas id="c" aria-label="Toy town with a train set, a road full of vehicles and a building site. Tap things to make them go."></canvas>
+    <canvas id="c3" hidden aria-label="Riding along with a train and its driver. Tap to toot, drag to look round."></canvas>
     <div id="parent">
       <button class="pbtn" id="bReset" aria-label="Put everything back to the start (press and hold)">🔄</button>
       <button class="pbtn" id="bBed" aria-label="Play timer: press and hold to change it, or to wake up">⏰10</button>
@@ -112,6 +115,7 @@ body{
     <button class="btn" id="bLight" aria-label="Stop and go"><span class="tl go"><i class="r"></i><i class="g"></i></span></button>
     <button class="btn" id="bSpeed" aria-label="Slow or fast">🐢</button>
     <button class="btn" id="bSky" aria-label="Day or night">🌙</button>
+    <button class="btn" id="bCam" aria-label="Ride with the train driver" hidden>🎥</button>
   </div>
 </div>
 <div id="sleep" aria-hidden="true"><i style="left:61.6%;top:67.5%;animation-delay:2.54s"></i><i style="left:91.6%;top:67.4%;animation-delay:2.95s"></i><i style="left:5.7%;top:43.5%;animation-delay:3.02s"></i><i style="left:64.0%;top:81.4%;animation-delay:0.36s"></i><i style="left:47.1%;top:24.5%;animation-delay:1.74s"></i><i style="left:57.0%;top:4.1%;animation-delay:0.69s"></i><i style="left:29.3%;top:82.7%;animation-delay:2.45s"></i><i style="left:18.0%;top:72.4%;animation-delay:0.44s"></i><i style="left:61.0%;top:14.0%;animation-delay:0.01s"></i><i style="left:84.9%;top:21.2%;animation-delay:0.69s"></i><i style="left:95.3%;top:78.9%;animation-delay:0.93s"></i><i style="left:93.4%;top:49.9%;animation-delay:2.17s"></i><i style="left:22.2%;top:84.9%;animation-delay:2.21s"></i><i style="left:93.9%;top:80.8%;animation-delay:0.96s"></i><i style="left:37.0%;top:17.4%;animation-delay:0.47s"></i><i style="left:9.1%;top:29.2%;animation-delay:1.93s"></i><i style="left:3.3%;top:62.0%;animation-delay:1.08s"></i><i style="left:32.1%;top:74.2%;animation-delay:1.54s"></i><i style="left:32.7%;top:44.9%;animation-delay:2.25s"></i><i style="left:8.4%;top:87.8%;animation-delay:0.07s"></i><i style="left:73.5%;top:76.5%;animation-delay:0.06s"></i><i style="left:77.0%;top:34.9%;animation-delay:1.85s"></i><i style="left:3.9%;top:7.1%;animation-delay:0.58s"></i><i style="left:92.8%;top:20.1%;animation-delay:2.42s"></i><div class="moon">🌙</div><div class="zz">💤</div></div>
@@ -120,7 +124,7 @@ body{
 'use strict';
 const $ = id => document.getElementById(id);
 const stage = $('stage'), cv = $('c'), ctx = cv.getContext('2d');
-const bg = document.createElement('canvas'), bctx = bg.getContext('2d');
+const bg = document.createElement('canvas');
 let W = 0, H = 0, DPR = 1, U = 1, NOW = 0;
 
 const TAU = Math.PI * 2;
@@ -811,22 +815,102 @@ function inWash(w, x, y, hl, hw){
 function bubbles(x, y, n, spread){
   for (let i = 0; i < n; i++) fx.push({ t: 'bub', x: x + rand(-1, 1) * spread, y: y + rand(-1, 1) * spread, vx: rand(-14, 14) * U, vy: rand(-22, -6) * U, g: -6 * U, life: 0, max: rand(1, 1.9), r: rand(2, 5) * U });
 }
+/* ---------- the fire station, the police station and the ambulance station ---------- */
+// He asked for "a fire station and a police station and an ambulance station". Each is a small building on the inside
+// of the road with a bay at the kerb, where its vehicle lives (parked, in the inner lane) instead of driving round
+// and round. Tapping a station or its vehicle (or every few minutes, on its own) sends it out on a call, with the
+// siren going and everything ahead pulling over:
+// - the fire engine drives to a bonfire that's got too big, and a firefighter squirts it out;
+// - the ambulance drives to someone who's fallen off their scooter, who gets a plaster and a smile;
+// - the police car goes after the robber, and brings him back to the pen beside the police station, where he stays
+//   till he slips out for the next robbery.
+// Then they drive home round the loop. Nobody's hurt and nothing's scary. A station with no room (a small screen) is
+// left out, and its vehicle drives round with the traffic as before.
+const STN_W = 50, STN_D = 32, STN_FRONT = 45, BAY = 22; // U; BAY: how far over its vehicle parks, from the middle of its lane
+const STN_COL = { fire: '#e63946', police: '#2d6cdf', ambulance: '#1f9e4a' };
+let stations = [], spots = [];
+function buildStations(){
+  stations = [];
+  const score = { // where each would like to be (the smallest wins)
+    fire: c => (H - c.y) + c.x * 0.5,
+    police: c => bank ? Math.hypot(c.x - bank.x, c.y - bank.y) : c.y + c.x * 0.5,
+    ambulance: c => (H - c.y) + (W - c.x) * 0.5,
+  };
+  for (const kind of ['fire', 'police', 'ambulance']){
+    let best = null, bs = 1e18;
+    for (let s = 0; s < ROAD.L; s += 6 * U){
+      const q = pAt(ROAD, s), ca = Math.cos(q.a), sa = Math.sin(q.a);
+      if ([-60, 60].some(d => Math.abs(angDiff(pAt(ROAD, s + d * U).a, q.a)) > 0.02)) continue; // on a straight
+      const P = (t, n) => ({ x: q.x + (ca * t - sa * n) * U, y: q.y + (sa * t + ca * n) * U }); // t along, n inwards, in U
+      const c = P(0, STN_FRONT + STN_D / 2);
+      let ok = true;
+      for (const [t, n] of [[-1, 0], [1, 0], [-1, 1], [1, 1], [0, 1], [0, 0.5], [-1, -0.5], [1, -0.5]]){
+        const p = P(t * (STN_W / 2 + 4), STN_FRONT + n * (STN_D + 4));
+        if (p.x < 8 || p.y < 8 || p.x > W - 8 || p.y > H - 8 || minD2(p.x, p.y) < (22 * U) ** 2 || siteDist(p.x, p.y) < 8 * U){ ok = false; break; }
+        if (pond && ((p.x - pond.x) / (pond.rx + 10 * U)) ** 2 + ((p.y - pond.y) / (pond.ry + 10 * U)) ** 2 < 1){ ok = false; break; }
+      }
+      if (!ok || Math.hypot(c.x - station.cx, c.y - station.cy) < 90 * U || Math.hypot(c.x - tunnel.cx, c.y - tunnel.cy) < 100 * U) continue;
+      if ((works && Math.hypot(c.x - works.x, c.y - works.y) < 130 * U) || nearWash(c.x, c.y, 40 * U)) continue;
+      if (sides.some(j => Math.hypot(c.x - j.x, c.y - j.y) < 170 * U)) continue;
+      if (spur && [spur.CE, spur.CX, spur.SI, spur.SO].some(Pp => pMinD2(Pp, c.x, c.y, 2) < (130 * U) ** 2)) continue;
+      if (bank && Math.hypot(c.x - bank.x, c.y - bank.y) < 92 * U) continue;
+      if (stations.some(o => Math.hypot(c.x - o.x, c.y - o.y) < 90 * U)) continue;
+      if (c.x > W - 250 && c.y < 110) continue; // the parent corner
+      const sc = score[kind](c);
+      if (sc < bs){
+        bs = sc; const p = P(0, LANE);
+        best = { kind, x: c.x, y: c.y, a: q.a, P, door: P(0, STN_FRONT), lamp: P(-STN_W / 2 + 5, STN_FRONT + 4), pen: P(STN_W / 2 - 8, STN_FRONT + STN_D / 2 - 3), sPark: pNearestS(LANES[1], p.x, p.y) };
+      }
+    }
+    if (best) stations.push({ ...best, v: null, call: null, figs: [], jail: false, jailB: 0, bell: 0, ringT: 0, hi: false, next: 60 });
+  }
+}
+// is a point in a station? (bay: or in the bay in front of it, out to the kerb)
+function inStation(st, x, y, pad, bay){
+  const dx = x - st.x, dy = y - st.y, ca = Math.cos(st.a), sa = Math.sin(st.a), lx = dx * ca + dy * sa, ly = -dx * sa + dy * ca;
+  return Math.abs(lx) < STN_W / 2 * U + pad && ly < STN_D / 2 * U + pad && ly > -(STN_D / 2 + (bay ? STN_FRONT - ROAD_HALF : 0)) * U - pad;
+}
+// is there open grass here, clear of everything that's been built so far?
+function groundFree(x, y, r){
+  if (x < r + 4 || y < r + 4 || x > W - r - 4 || y > H - r - 4) return false;
+  if (minD2(x, y) < (r + 18 * U) ** 2) return false;
+  if (pMinD2(ROAD, x, y, 3) < ((ROAD_HALF + 4) * U + r) ** 2) return false;
+  if (spur) for (const P of [spur.CE, spur.CX, spur.SI, spur.SO]) if (pMinD2(P, x, y, 2) < ((ROAD_HALF + 6) * U + r) ** 2) return false;
+  if (siteDist(x, y) < r + 8 * U) return false;
+  if (pond && ((x - pond.x) / (pond.rx + r + 12 * U)) ** 2 + ((y - pond.y) / (pond.ry + r + 12 * U)) ** 2 < 1) return false;
+  if (Math.hypot(x - station.cx, y - station.cy) < r + 62 * U) return false;
+  if (Math.hypot(x - tunnel.cx, y - tunnel.cy) < r + 64 * U) return false;
+  if (works){ const wc = works.toW(0, (ROAD_HALF + 20) * U); if (Math.hypot(x - wc.x, y - wc.y) < r + 88 * U) return false; }
+  if (nearWash(x, y, r) || nearSide(x, y, r) || (bank && Math.hypot(x - bank.x, y - bank.y) < r + 40 * U)) return false;
+  if (stations.some(st => inStation(st, x, y, r + 5 * U, true))) return false;
+  if (x > W - 230 && y < 60 + r) return false; // the parent corner (5 buttons in the home-screen app)
+  return true;
+}
+// Places on the grass beside the inner lane where something can happen (the bonfire, the scooter), with room at the
+// kerb just before them for the fire engine or the ambulance to pull up.
+function buildSpots(){
+  spots = [];
+  const L1 = LANES[1], L = L1.L, kerb = (s, d) => { const q = pAt(L1, wrap(s, L)); return { x: q.x + Math.sin(q.a) * d * U, y: q.y - Math.cos(q.a) * d * U, a: q.a }; };
+  for (let s = 0; s < L; s += 20 * U){
+    const q = kerb(s, 27);
+    if ([-95, -50, 30].some(d => Math.abs(angDiff(kerb(s + d * U, 0).a, q.a)) > 0.1)) continue; // (near enough straight)
+    if (!groundFree(q.x, q.y, 13 * U)) continue;
+    let ok = true;
+    for (let d = -104; d <= -24 && ok; d += 16){
+      const b = kerb(s + d * U, BAY);
+      ok = b.x > 14 * U && b.y > 14 * U && b.x < W - 14 * U && b.y < H - 14 * U && minD2(b.x, b.y) > (32 * U) ** 2 && pullOkAt(b.x, b.y, 27) && !(b.x > W - 230 && b.y < 70);
+    }
+    if (!ok || spots.some(o => Math.min(wrap(o.s - s, L), wrap(s - o.s, L)) < 170 * U)) continue;
+    spots.push({ s, x: q.x, y: q.y, busy: null });
+  }
+}
 function buildScenery(){
   const R = mulberry(7);
   trees = []; houses = []; flies = [];
   const placed = [];
   const ok = (x, y, r) => {
-    if (x < r + 4 || y < r + 4 || x > W - r - 4 || y > H - r - 4) return false;
-    if (minD2(x, y) < (r + 18 * U) ** 2) return false;
-    if (pMinD2(ROAD, x, y, 3) < ((ROAD_HALF + 4) * U + r) ** 2) return false;
-    if (spur) for (const P of [spur.CE, spur.CX, spur.SI, spur.SO]) if (pMinD2(P, x, y, 2) < ((ROAD_HALF + 6) * U + r) ** 2) return false;
-    if (siteDist(x, y) < r + 8 * U) return false;
-    if (pond && ((x - pond.x) / (pond.rx + r + 12 * U)) ** 2 + ((y - pond.y) / (pond.ry + r + 12 * U)) ** 2 < 1) return false;
-    if (Math.hypot(x - station.cx, y - station.cy) < r + 62 * U) return false;
-    if (Math.hypot(x - tunnel.cx, y - tunnel.cy) < r + 64 * U) return false;
-    if (works){ const wc = works.toW(0, (ROAD_HALF + 20) * U); if (Math.hypot(x - wc.x, y - wc.y) < r + 88 * U) return false; }
-    if (nearWash(x, y, r) || nearSide(x, y, r) || (bank && Math.hypot(x - bank.x, y - bank.y) < r + 40 * U)) return false;
-    if (x > W - 230 && y < 60 + r) return false; // the parent corner (5 buttons in the home-screen app)
+    if (!groundFree(x, y, r)) return false;
+    if (spots.some(sp => Math.hypot(x - sp.x, y - sp.y) < r + 22 * U)) return false; // (and nothing in the fire engine's way)
     for (const p of placed) if (Math.hypot(x - p.x, y - p.y) < r + p.r + 6 * U) return false;
     return true;
   };
@@ -849,9 +933,12 @@ function buildScenery(){
 /* ================= background ================= */
 function pathTrack(c){ c.beginPath(); c.moveTo(TX[0], TY[0]); for (let i = 1; i < TN; i++) c.lineTo(TX[i], TY[i]); c.closePath(); }
 function siteFrame(c){ c.translate(site.p.x, site.p.y); c.rotate(site.theta); }
-function drawBG(){
-  bg.width = Math.round(W * DPR); bg.height = Math.round(H * DPR);
-  const c = bctx; c.setTransform(DPR, 0, 0, DPR, 0, 0);
+// flat3: drawing the 3D view's ground, which leaves off what stands up (the 3D view has models of those)
+let flat3 = false;
+function drawBG(cnv = bg, sc = DPR, for3d = false){
+  cnv.width = Math.round(W * sc); cnv.height = Math.round(H * sc);
+  const c = cnv.getContext('2d'); c.setTransform(sc, 0, 0, sc, 0, 0);
+  flat3 = for3d;
   const R = mulberry(3);
   c.fillStyle = '#8acb68'; c.fillRect(0, 0, W, H);
   for (let i = 0; i < 26; i++){
@@ -898,7 +985,7 @@ function drawBG(){
       c.fillStyle = '#3f9a3a'; c.beginPath(); c.moveTo(lx, ly); c.arc(lx, ly, r * U, 0.4, TAU - 0.1); c.closePath(); c.fill();
     });
   }
-  for (const h of houses){
+  if (!flat3) for (const h of houses){
     c.save(); c.translate(h.x, h.y); c.rotate(h.rot);
     const w = h.r * 2, d = h.r * 1.6;
     c.fillStyle = 'rgba(0,0,0,0.18)'; rr(c, -w / 2 + 3 * U, -d / 2 + 4 * U, w, d, 3 * U); c.fill();
@@ -909,7 +996,8 @@ function drawBG(){
     c.fillStyle = '#f4e3c3'; c.fillRect(-4 * U, d / 2, 8 * U, 3 * U);
     c.restore();
   }
-  if (bank) drawBank(c);
+  for (const st of stations){ drawStationGround(c, st); if (!flat3) drawStation(c, st); }
+  if (bank && !flat3) drawBank(c);
   if (works && works.ph > 0){
     c.save(); c.translate(works.x, works.y); c.rotate(works.a);
     c.fillStyle = '#3b3e44'; rr(c, -50 * U, (ROAD_HALF + 9) * U, 100 * U, works.ph, 3 * U); c.fill();
@@ -938,6 +1026,7 @@ function drawBG(){
     c.restore();
   }
   drawWashBG(c);
+  if (flat3){ flat3 = false; return; }
   // station
   c.save(); c.translate(station.cx, station.cy); c.rotate(station.a);
   c.fillStyle = 'rgba(0,0,0,0.16)'; rr(c, -44 * U, -8 * U, 92 * U, 24 * U, 3 * U); c.fill();
@@ -1004,6 +1093,86 @@ function drawBank(c){
   c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.2 * U; c.beginPath(); c.arc(0, cy, 5.8 * U, Math.PI * 1.1, Math.PI * 1.5); c.stroke();
   c.restore();
 }
+/* ---------- the stations, drawn ---------- */
+// the paved bay from the kerb to the front of a station, marked out in its colour (part of the ground: in 3D too)
+function drawStationGround(c, st){
+  const w = STN_W * U, d = STN_D * U, y1 = -d / 2, y0 = y1 - (STN_FRONT - ROAD_HALF - 1) * U, by = y1 - (STN_FRONT - LANE - BAY) * U;
+  c.save(); c.translate(st.x, st.y); c.rotate(st.a);
+  c.fillStyle = '#c9ccd1'; rr(c, -w / 2 - 5 * U, y0, w + 10 * U, y1 - y0 + 3 * U, 4 * U); c.fill();
+  c.strokeStyle = STN_COL[st.kind]; c.lineWidth = 1.8 * U; c.setLineDash([6 * U, 4 * U]);
+  rr(c, -w / 2 - 1 * U, by - 12.5 * U, w + 2 * U, 25 * U, 4 * U); c.stroke(); c.setLineDash([]);
+  c.restore();
+}
+function drawStation(c, st){
+  const w = STN_W * U, d = STN_D * U, kind = st.kind, bw = kind === 'police' ? w - 17 * U : w, x0 = -w / 2, xm = x0 + bw / 2;
+  const [hi, lo, ridge, door] = { fire: ['#d94141', '#b52f2f', '#f29a9a', '#f1f1f1'], police: ['#3b6fc4', '#2b559c', '#9dbcf0', '#1d3a6e'], ambulance: ['#f6f8fa', '#dde3e9', '#ffffff', '#1f9e4a'] }[kind];
+  c.save(); c.translate(st.x, st.y); c.rotate(st.a);
+  c.fillStyle = 'rgba(0,0,0,0.18)'; rr(c, x0 + 3 * U, -d / 2 + 4 * U, bw, d, 3 * U); c.fill();
+  // the doors, along the front (a strip, seen from above)
+  c.fillStyle = door;
+  if (kind === 'fire') for (const x of [-20.5, 1.5]){ rr(c, x * U, -d / 2 - 2.5 * U, 19 * U, 5 * U, 1 * U); c.fill(); }
+  else rr(c, xm - (kind === 'police' ? 5 : 11) * U, -d / 2 - 2.5 * U, (kind === 'police' ? 10 : 22) * U, 5 * U, 1 * U), c.fill();
+  // roof: two slopes and a ridge
+  c.fillStyle = hi; rr(c, x0, -d / 2, bw, d / 2 + 1, 2 * U); c.fill();
+  c.fillStyle = lo; rr(c, x0, 0, bw, d / 2, 2 * U); c.fill();
+  c.strokeStyle = ridge; c.lineWidth = 2 * U; c.beginPath(); c.moveTo(x0 + 2 * U, 0); c.lineTo(x0 + bw - 2 * U, 0); c.stroke();
+  if (kind === 'fire'){
+    // the hose tower at the back, and a flame on the roof
+    c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, w / 2 - 14 * U, d / 2 - 13 * U, 12 * U, 12 * U, 2 * U); c.fill();
+    c.fillStyle = '#8f2424'; rr(c, w / 2 - 15.5 * U, d / 2 - 15 * U, 12 * U, 12 * U, 2 * U); c.fill();
+    c.fillStyle = '#f4f4f4'; rr(c, w / 2 - 13 * U, d / 2 - 12.5 * U, 7 * U, 7 * U, 1.5 * U); c.fill();
+    c.fillStyle = '#ffffff'; circle(c, -7 * U, 0, 9 * U); c.fill();
+    c.strokeStyle = '#ffd23f'; c.lineWidth = 1.6 * U; circle(c, -7 * U, 0, 9 * U); c.stroke();
+    c.save(); c.translate(-7 * U, 0); c.rotate(-st.a); c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillStyle = '#000'; c.font = `${Math.round(12 * U)}px ${EF}`; c.fillText('🔥', 0, 0.5 * U); c.restore();
+  } else if (kind === 'police'){
+    // a gold star on the roof, and the pen at the side
+    c.fillStyle = '#ffffff'; circle(c, xm, 0, 9 * U); c.fill();
+    c.fillStyle = '#f2b705'; c.beginPath();
+    for (let i = 0; i < 10; i++){ const a = -Math.PI / 2 + i * Math.PI / 5 - st.a, r = (i % 2 ? 3.2 : 7.4) * U; c.lineTo(xm + Math.cos(a) * r, Math.sin(a) * r); }
+    c.closePath(); c.fill();
+    c.fillStyle = '#b9bcc2'; rr(c, w / 2 - 15 * U, -d / 2 + 2 * U, 14 * U, d - 10 * U, 2 * U); c.fill();
+  } else {
+    c.fillStyle = '#1f9e4a'; rr(c, -10 * U, -3.4 * U, 20 * U, 6.8 * U, 1.2 * U); c.fill(); rr(c, -3.4 * U, -10 * U, 6.8 * U, 20 * U, 1.2 * U); c.fill();
+  }
+  c.restore();
+}
+// what changes: the lamps, the robber in the pen (behind its bars), and the bonfire or the scooter rider
+function drawStations(c, time){
+  for (const st of stations){
+    const on = stnLit(st), b = Math.floor(time * 8) % 2 === 0, L = st.lamp;
+    c.fillStyle = '#555'; circle(c, L.x, L.y, 4.2 * U); c.fill();
+    c.fillStyle = on ? (b ? (st.kind === 'fire' ? '#ff3b3b' : '#3a86ff') : '#ffffff') : (st.kind === 'fire' ? '#b23a3a' : '#2f5fae'); circle(c, L.x, L.y, 3 * U); c.fill();
+    if (on && st.bell > 0){
+      c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 1.5 * U;
+      for (const r of [7, 10.5]){ c.beginPath(); c.arc(L.x, L.y, r * U * (b ? 1 : 1.12), -2.4, -0.7); c.stroke(); }
+    }
+    if (st.kind === 'police'){
+      if (st.jail) drawRobber(c, st.pen.x, st.pen.y + 1 * U, 6 * U * (1 + st.jailB * 0.5), false, Math.abs(Math.sin(st.jailB * 20)) * st.jailB * 6 * U);
+      c.save(); c.translate(st.x, st.y); c.rotate(st.a);
+      const x0 = (STN_W / 2 - 15) * U, y0 = (-STN_D / 2 + 2) * U, pw = 14 * U, ph = (STN_D - 10) * U;
+      c.strokeStyle = '#4a4f57'; c.lineWidth = 1.1 * U;
+      for (let i = 0; i <= 5; i++){ c.beginPath(); c.moveTo(x0 + pw * i / 5, y0); c.lineTo(x0 + pw * i / 5, y0 + ph); c.stroke(); }
+      c.lineWidth = 1.8 * U; rr(c, x0, y0, pw, ph, 1.5 * U); c.stroke();
+      c.restore();
+    }
+    const cl = st.call, sp = cl && cl.spot;
+    if (!sp || cl.pop <= 0) continue;
+    const s = cl.pop;
+    c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(sp.x, sp.y + 5 * U, 13 * U * s, 5 * U * s, 0, 0, TAU); c.fill();
+    c.fillStyle = '#000';
+    if (st.kind === 'fire'){
+      for (const a of [0.5, -0.5]){ c.save(); c.translate(sp.x, sp.y + 3 * U); c.rotate(a); c.fillStyle = '#7a5230'; rr(c, -9 * U * s, -2 * U * s, 18 * U * s, 4 * U * s, 2 * U * s); c.fill(); c.fillStyle = '#e8c79a'; circle(c, 8 * U * s, 0, 1.4 * U * s); c.fill(); c.restore(); }
+      if (cl.k > 0){
+        const f = (12 + 16 * cl.k) * U * s * (1 + 0.08 * Math.sin(time * 17) + 0.05 * Math.sin(time * 29));
+        c.fillStyle = '#000'; c.font = `${Math.max(1, Math.round(f))}px ${EF}`; c.fillText('🔥', sp.x, sp.y - f * 0.28);
+      }
+    } else {
+      c.save(); c.translate(sp.x + 11 * U * s, sp.y + 2 * U); c.rotate(cl.k > 0 ? 1.25 : 0); c.font = `${Math.max(1, Math.round(18 * U * s))}px ${EF}`; c.fillText('🛴', 0, 0); c.restore();
+      c.font = `${Math.max(1, Math.round(22 * U * s))}px ${EF}`; c.fillText(cl.k > 0 ? '🤕' : '😊', sp.x - 2 * U, sp.y - 4 * U - (cl.k > 0 ? 0 : Math.abs(Math.sin(time * 9)) * 2 * U));
+    }
+  }
+}
 function drawBankAlarm(c, time){
   if (!bank) return;
   const on = bank.alarm > 0, b = Math.floor(time * 8) % 2 === 0, L = bank.lamp;
@@ -1035,10 +1204,13 @@ function drawSiteBG(c, R){
     c.fillStyle = '#6b4423'; c.beginPath(); c.ellipse(ex.hole.u, ex.hole.w, 13 * U, 10 * U, 0, 0, TAU); c.fill();
     c.fillStyle = '#4a2e17'; c.beginPath(); c.ellipse(ex.hole.u + 1 * U, ex.hole.w + 1 * U, 9 * U, 6.5 * U, 0, 0, TAU); c.fill();
     const hp = ex.heap;
-    c.fillStyle = '#8b5a2b'; circle(c, hp.u, hp.w, 13 * U); c.fill();
-    c.fillStyle = '#a06a35'; circle(c, hp.u - 3 * U, hp.w - 3 * U, 8 * U); c.fill();
-    c.fillStyle = '#b77d42'; circle(c, hp.u - 5 * U, hp.w - 5 * U, 3.5 * U); c.fill();
+    if (!flat3){
+      c.fillStyle = '#8b5a2b'; circle(c, hp.u, hp.w, 13 * U); c.fill();
+      c.fillStyle = '#a06a35'; circle(c, hp.u - 3 * U, hp.w - 3 * U, 8 * U); c.fill();
+      c.fillStyle = '#b77d42'; circle(c, hp.u - 5 * U, hp.w - 5 * U, 3.5 * U); c.fill();
+    }
   }
+  if (flat3){ c.restore(); return; } // (the heap, foundation, pallet, office and fence are models in 3D)
   // building foundation
   if (site.bld){
     const b = site.bld;
@@ -1135,7 +1307,7 @@ function pushFrom(tr, delta){
   }
 }
 function tootTrain(tr){
-  sToot(tr.pitch); tr.bounce = 0.6;
+  sToot(tr.pitch); tr.bounce = 0.6; tr.wave = 1.6; // (the driver waves)
   const g = tr.geo[0]; if (!g) return;
   for (let i = 0; i < 3; i++) fx.push({ t: 'txt', ch: pick(['♪', '♫']), x: g.x + rand(-10, 10) * U, y: g.y, vx: rand(-25, 25) * U, vy: rand(-70, -45) * U, life: 0, max: 1.3, size: rand(20, 28) * U, col: pick(ENGINE_COLORS), font: 'bold' });
   for (const car of tr.cars) if (!car.e) car.jump = 0.5 + Math.random() * 0.2;
@@ -1190,6 +1362,31 @@ function drawTrain(c, tr, time){
     const jump = car.jump > 0 ? Math.sin((1 - car.jump / 0.7) * Math.PI) * 12 * U : 0;
     c.fillText(car.animal, g.x, g.y - 2 * U + bob - Math.max(0, jump));
   }
+  const g = G[0], cx = -g.len * 0.32; // the driver, in the cab
+  drawDriver(c, g.x + Math.cos(g.a) * cx, g.y + Math.sin(g.a) * cx - 2 * U, 5 * U * sc, tr.wave || 0, time);
+}
+// The engine driver, head and shoulders, upright like the emoji people: a blue cap with a peak and a badge, a big
+// moustache and a red neckerchief. He waves while `wave` (seconds, from 1.6 down) lasts. `r` is the size of his head.
+function drawDriver(c, x, y, r, wave, time){
+  c.save(); c.translate(x, y);
+  const k = wave > 0 ? clamp(Math.min(wave / 0.25, (1.6 - wave) / 0.2), 0, 1) : 0;
+  if (k > 0){
+    const hx = r * (1.45 + 0.35 * Math.sin(time * 14)), hy = r * (1.1 - 2.1 * k);
+    c.strokeStyle = '#2f5597'; c.lineWidth = r * 0.55; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(r * 0.75, r * 1.25); c.lineTo(hx, hy); c.stroke(); c.lineCap = 'butt';
+    c.fillStyle = '#f5c7a0'; circle(c, hx, hy - r * 0.15, r * 0.36); c.fill();
+  }
+  c.fillStyle = '#2f5597'; c.beginPath(); c.ellipse(0, r * 1.75, r * 1.2, r * 0.9, 0, Math.PI, 0); c.closePath(); c.fill();
+  c.fillStyle = '#e63946'; c.beginPath(); c.moveTo(-r * 0.5, r * 0.85); c.lineTo(r * 0.5, r * 0.85); c.lineTo(0, r * 1.4); c.closePath(); c.fill();
+  c.fillStyle = '#f5c7a0'; circle(c, 0, 0, r); c.fill();
+  c.fillStyle = 'rgba(240,120,110,0.4)'; circle(c, -r * 0.58, r * 0.28, r * 0.2); c.fill(); circle(c, r * 0.58, r * 0.28, r * 0.2); c.fill();
+  c.fillStyle = '#2a1d14'; circle(c, -r * 0.33, -r * 0.02, r * 0.12); c.fill(); circle(c, r * 0.33, -r * 0.02, r * 0.12); c.fill();
+  c.fillStyle = '#6b4423';
+  for (const s of [-1, 1]){ c.beginPath(); c.ellipse(s * r * 0.24, r * 0.42, r * 0.3, r * 0.14, -s * 0.25, 0, TAU); c.fill(); }
+  c.fillStyle = '#2b3a55'; c.beginPath(); c.moveTo(-r, -r * 0.35); c.quadraticCurveTo(-r * 1.05, -r * 1.3, 0, -r * 1.32); c.quadraticCurveTo(r * 1.05, -r * 1.3, r, -r * 0.35); c.closePath(); c.fill();
+  c.fillStyle = '#1d2638'; rr(c, -r * 1.12, -r * 0.52, r * 2.24, r * 0.3, r * 0.14); c.fill();
+  c.fillStyle = '#f2c14e'; circle(c, 0, -r * 0.82, r * 0.17); c.fill();
+  c.restore();
 }
 
 /* ================= road vehicles ================= */
@@ -1233,10 +1430,11 @@ function spawnVehicles(){
   const mk = (type, route, s, lane) => makeVehicle(type, route, s, lane);
   const L0 = LANES[0].L, L1 = LANES[1].L;
   const cap0 = clamp(Math.floor(L0 / (160 * U)), 2, 7);
-  const list0 = ['bus', 'car', 'ambulance', 'fire', 'tractor', 'lorry', 'car'].slice(0, cap0);
+  const has = k => stations.some(st => st.kind === k), free = t => has(t) ? 'car' : t; // (a station's vehicle lives there instead)
+  const list0 = ['bus', 'car', 'ambulance', 'fire', 'tractor', 'lorry', 'car'].map(free).slice(0, cap0);
   list0.forEach((t, i) => mk(t, [laneSeg(0)], i * L0 / list0.length + 20 * U, 0));
   const siteTypes = spur ? ['tipper', 'mixer', 'tipper'] : ['tipper', 'mixer'];
-  const others = ['car', 'police', 'digger', 'car', 'car'];
+  const others = ['car', 'police', 'digger', 'car', 'car'].map(free);
   const cap1 = clamp(Math.floor(L1 / (160 * U)), 2, 8);
   const slots = [];
   let si = 0, oi = 0;
@@ -1262,10 +1460,12 @@ function spawnVehicles(){
     if (kind === 'site' && siteRoute) mk(t, siteRoute, ((sL - spur.sExitL) % L1 + L1) % L1);
     else mk(t, [laneSeg(1)], sL % L1, 1);
   });
+  for (const sp of spots) sp.busy = null;
+  for (const st of stations){ Object.assign(st, { call: null, figs: [], jail: false, bell: 0, next: rand(35, 150) }); homeVehicle(st); }
   for (const v of vehicles) posVehicle(v);
   // the side roads keep each lane topped up to what it started with, and bring back the special ones that drive off
   traffic.want = [0, 1].map(i => vehicles.filter(v => v.lane === i).length);
-  traffic.staples = [...new Set(vehicles.filter(v => v.lane !== undefined && !['car', 'tractor', 'digger'].includes(v.type)).map(v => v.type))];
+  traffic.staples = [...new Set(vehicles.filter(v => v.lane !== undefined && !v.home && !['car', 'tractor', 'digger'].includes(v.type)).map(v => v.type))];
   traffic.pend = [];
   for (const jn of sides) jn.busy = null;
   Object.assign(rob, { v: null, cop: null, phase: '', t: 0, figs: [], next: rand(150, 240) });
@@ -1273,7 +1473,7 @@ function spawnVehicles(){
 function posVehicle(v){
   const seg = v.route[v.seg], q = pAt(seg.P, seg.start + v.s);
   v.x = q.x; v.y = q.y; v.a = q.a;
-  if (v.pull > 0){ const o = ease(v.pull) * 19 * U; v.x += Math.sin(q.a) * o; v.y -= Math.cos(q.a) * o; } // pulled over to the kerb (on its left)
+  if (v.pull > 0){ const o = ease(v.pull) * (v.home ? BAY : 19) * U; v.x += Math.sin(q.a) * o; v.y -= Math.cos(q.a) * o; } // pulled over to the kerb (on its left)
 }
 // where a vehicle is in each key it's in: [key, position, mode] (see makeSide for the modes)
 function vKeys(v){
@@ -1324,6 +1524,7 @@ function exitGate(v, jn){
   jn.busy = v; v.jres = jn; return true;
 }
 function leaveChance(v){
+  if (v.home) return 0; // (a station's vehicle stays on the map)
   if (v.mustLeave) return 1;
   if (v.extra || v.chase || v.age < 20 || v.siren > 0 || v.washGo || v.wash > 0 || v.yieldTo) return 0;
   return v.type === 'tractor' || v.type === 'digger' ? 0.6 : 0.2; // slow ones more often, so the queue behind them clears
@@ -1409,7 +1610,7 @@ function updateVehicles(dt){
     v.drum += dt * (v.hold > 0 && v.type === 'mixer' ? 5 : 1.2);
     v.hurry = Math.max(0, (v.hurry || 0) - dt);
     v.age += dt; v.stall = Math.max(0, (v.stall || 0) - dt); v.stallCool = Math.max(0, (v.stallCool || 0) - dt);
-    let want = going ? T.spd * U * spMul * (v.called ? 1.35 : 1) * (v.hurry > 0 ? 1.4 : 1) * (v.chase && rob.phase === 'chase' ? 1.8 : 1) * (v.tired ? 0.5 : 1) : 0;
+    let want = going ? T.spd * U * spMul * (v.called ? 1.35 : 1) * (v.hurry > 0 ? 1.4 : 1) * (v.chase && rob.phase === 'chase' ? 1.8 : 1) * (v.rush ? 1.5 : 1) * (v.tired ? 0.5 : 1) : 0;
     if (v.yieldTo || v.arrest || v.stall > 0 || v.parked || v.puffed) want = 0;
     if (seg.turn) want = Math.min(want, 34 * U * spMul);
     if (v.waiting > 0){ v.waiting -= dt; want = 0; if (v.waiting <= 0) goJob(v); }
@@ -1457,6 +1658,12 @@ function updateVehicles(dt){
     }
     if (v.shine > 0){ v.shine -= dt; if (Math.random() < dt * 6) sparkle(v.x + rand(-12, 12) * U, v.y + rand(-8, 8) * U, 1); }
     if (v === rob.cop && v.route.length === 1) want = Math.min(want, copHold(v));
+    // on its way to stop somewhere (a call, or home to its station): it pulls in to the kerb as it gets there
+    if (v.stopAt !== undefined && v.route.length === 1){
+      const L = KEYLEN['L' + v.lane], d = wrap(v.stopAt - v.s, L);
+      if ((d < 1.5 * U && v.v < 5 * U) || d > L - 14 * U){ v.stopAt = undefined; v.parked = true; v.rush = v.kerb = false; want = 0; }
+      else { want = Math.min(want, Math.max(4 * U, d * 3)); v.kerb = d < 50 * U; }
+    }
     // side roads: now and then a vehicle decides (140U out) to turn off the map
     let exitD = -1;
     if (v.route.length === 1 && v.lane !== undefined && sides.length){
@@ -1517,29 +1724,34 @@ function makeWay(dt){
   for (const v of vehicles){
     const c = v.yieldTo;
     // back out once the police car's by (or it's stopped chasing well behind): never while it's alongside
-    if (c && (c.gone || c.route.length !== 1 || v.route[v.seg].turn || passedBy(c, v) || (!c.chase && !alongside(c, v)))) v.yieldTo = null;
-    v.pull = clamp(v.pull + (v.yieldTo || v.parked || v.puffed ? dt * 2.5 : -dt * 1.5), 0, 1);
+    if (c && (c.gone || c.route.length !== 1 || v.route[v.seg].turn || passedBy(c, v) || (!c.chase && !c.rush && !alongside(c, v)))) v.yieldTo = null;
+    v.pull = clamp(v.pull + (v.yieldTo || v.parked || v.puffed || v.kerb ? dt * 2.5 : -dt * 1.5), 0, 1);
   }
-  const c = rob.cop;
-  if (!c || !c.chase || rob.phase !== 'chase' || c.route.length !== 1) return;
-  const [k, ks] = c.keys[0], L = KEYLEN[k];
-  for (const o of vehicles){
-    if (o === c || o.robber || o.yieldTo || o.wash > 0 || o.hold > 0 || o.waiting > 0 || o.jres) continue;
-    if (!(o.route.length === 1 || (o.route === siteRoute && o.seg === 0))) continue;
-    const e = o.keys.find(x => x[0] === k && !x[2]); if (!e) continue;
-    const d = wrap(e[1] - ks, L) - (c.half + o.half) * U;
-    if (!(d > -2 * U && d < 45 * U) || !pullSpotOk(o)) continue;
-    o.yieldTo = c; o.exit = null; o.washGo = false;
+  // (the police car after the robber, and a fire engine or an ambulance on its way to a call)
+  for (const c of vehicles){
+    if (c.route.length !== 1 || !(c.rush || (c === rob.cop && c.chase && rob.phase === 'chase'))) continue;
+    const [k, ks] = c.keys[0], L = KEYLEN[k];
+    for (const o of vehicles){
+      if (o === c || o.robber || o.yieldTo || o.wash > 0 || o.hold > 0 || o.waiting > 0 || o.jres || o.parked || o.rush || o.chase || o.kerb) continue;
+      if (!(o.route.length === 1 || (o.route === siteRoute && o.seg === 0))) continue;
+      const e = o.keys.find(x => x[0] === k && !x[2]); if (!e) continue;
+      const d = wrap(e[1] - ks, L) - (c.half + o.half) * U;
+      if (!(d > -2 * U && d < 45 * U) || !pullSpotOk(o)) continue;
+      if (c.stopAt !== undefined && wrap(e[1] - c.stopAt + 80 * U, L) < 150 * U) continue; // (not where it's about to pull in itself)
+      o.yieldTo = c; o.exit = null; o.washGo = false;
+    }
   }
 }
 // Can it pull over to the kerb here? Not into the roadworks, the car wash, a side road, the site road or the bank:
 // there it just carries on (and a police car behind it follows).
-function pullSpotOk(o){
-  const px = o.x + Math.sin(o.a) * 19 * U, py = o.y - Math.cos(o.a) * 19 * U;
+function pullSpotOk(o){ return pullOkAt(o.x + Math.sin(o.a) * 19 * U, o.y - Math.cos(o.a) * 19 * U, o.half); }
+function pullOkAt(px, py, half){
   if ((works && Math.hypot(px - works.x, py - works.y) < 95 * U) || (carWash && inWash(carWash, px, py, 50 * U, (ROAD_HALF + 20) * U))) return false;
-  if (sides.some(jn => Math.hypot(px - jn.x, py - jn.y) < (ROAD_HALF + JR1 + o.half + 8) * U)) return false;
-  if (spur && [spur.CE, spur.CX].some(P => pMinD2(P, px, py, 2) < ((LANE + o.half + 12) * U) ** 2)) return false;
+  if (sides.some(jn => Math.hypot(px - jn.x, py - jn.y) < (ROAD_HALF + JR1 + half + 8) * U)) return false;
+  if (spur && [spur.CE, spur.CX].some(P => pMinD2(P, px, py, 2) < ((LANE + half + 12) * U) ** 2)) return false;
   if (bank && inBank(px, py, 12 * U)) return false;
+  if (stations.some(st => inStation(st, px, py, (half + 12) * U, true))) return false; // a station's bay, or where it's working
+  if (spots.some(sp => sp.busy && Math.hypot(px - sp.x, py - sp.y) < 125 * U)) return false;
   return true;
 }
 function alongside(c, v){ // is the police car level with it (within a length or so either way)?
@@ -1572,7 +1784,7 @@ function arrivalType(){
   const here = vehicles.filter(v => !v.leaving && !v.extra).map(v => v.type), n = t => here.filter(x => x === t).length;
   const miss = traffic.staples.filter(t => !n(t));
   if (miss.length) return pick(miss);
-  const pool = ['car', 'car', 'car', 'car', 'car', 'bus', 'lorry', 'fire', 'ambulance', 'police'].filter(t => t === 'car' || n(t) < 2);
+  const pool = ['car', 'car', 'car', 'car', 'car', 'bus', 'lorry', 'fire', 'ambulance', 'police'].filter(t => t === 'car' || (n(t) < 2 && !stations.some(st => st.kind === t)));
   for (const t of ['tractor', 'digger']) if (!n(t)) pool.push(t);
   return pick(pool);
 }
@@ -1598,7 +1810,7 @@ function arrive(type, li, jn, only){
 // Tapping his car makes it splutter to a stop for a moment. Once caught he hops out with his hands up, the coins fly
 // out of his bag, and he swaps places with a police officer: he rides off in the back of the police car, and the
 // officer drives his car. They both leave by the next side road, and the police car comes back later.
-function policeInLane(){ return vehicles.find(v => v.type === 'police' && v.route.length === 1 && !v.leaving && !v.extra && v.lane !== undefined) || null; }
+function policeInLane(){ return vehicles.find(v => v.type === 'police' && v.route.length === 1 && !v.leaving && !v.extra && v.lane !== undefined && !v.rider && v.stopAt === undefined && !(v.home && v.home.call)) || null; }
 function startRobber(cop){
   if (rob.v || rob.phase === 'call' || !sides.length) return false;
   if (!(cop && cop.type === 'police' && cop.route.length === 1 && !cop.leaving && cop.lane !== undefined)) cop = null;
@@ -1609,7 +1821,7 @@ function startRobber(cop){
   if (cop){ let bd = 1e18; for (const j of sides){ let d = wrap(j.sM[li] - cop.s, L); if (d < 350 * U || d > L - 200 * U) d += L; if (d < bd){ bd = d; jn = j; } } }
   Object.assign(rob, { v: null, cop, li, jn, phase: 'call', t: 0, sirT: 0, figs: [], ev: {}, fb: { robber: 0, cop: 0 } });
   if (cop){ cop.chase = true; cop.exit = null; cop.jres = null; cop.siren = 3; }
-  robberIn();
+  jailBreak(); robberIn();
   return true;
 }
 // he drives in as soon as there's room on a side road (tried every frame, for up to 10 s)
@@ -1629,12 +1841,12 @@ function startBankRobbery(){
   Object.assign(car, { extra: true, robber: true, parked: true, pull: 1, color: '#2b2d42' });
   posVehicle(car); car.keys = vKeys(car);
   // (the police car in the inner lane only if it's a way behind the bank: not level with his car, or past it)
-  const L = KEYLEN.L1, p = policeInLane(), dp = p && p.lane === 1 ? wrap(bank.sPark - p.s, L) : -1, cop = dp > 150 * U && dp < L * 0.6 ? p : null;
+  const L = KEYLEN.L1, p = policeInLane(), dp = p && p.lane === 1 ? wrap(bank.sPark - p.s, L) : -1, cop = p && (p.home || (dp > 150 * U && dp < L * 0.6)) ? p : null; // (the police station's car comes from wherever it is)
   let jn = sides[0], bd = 1e18; // the side road behind the bank, for a police car to come in by
   for (const j of sides){ const d = wrap(bank.sPark - j.sM[1], L); if (d < bd){ bd = d; jn = j; } }
   Object.assign(rob, { v: car, cop, li: 1, jn, phase: 'bank', t: 0, sirT: 0, figs: [], ev: {}, fb: { robber: 0, cop: 0 } });
   if (cop){ cop.chase = true; cop.exit = null; cop.jres = null; cop.siren = 3; }
-  ringBank(4);
+  jailBreak(); ringBank(4);
   return true;
 }
 function ringBank(t){ bank.alarm = Math.max(bank.alarm, t); sparkle(bank.x, bank.y, 14); }
@@ -1681,6 +1893,8 @@ function updateRobber(dt){
   if (going) rob.t += dt;
   const c = rob.cop;
   for (const w in rob.fb) rob.fb[w] = Math.max(0, rob.fb[w] - dt);
+  // the police station's car pulls out of its bay once he's in his car
+  if (c && c.parked && c.home && (rob.phase === 'in' || rob.phase === 'chase') && going && laneGap('L' + c.lane, c.s, gapBehind(), 0, c, r)) c.parked = false;
   if (rob.phase === 'bank'){ // he runs out of the bank with his bag and jumps in his car
     const d = bank.door, k = ease((rob.t - 0.3) / 1.1), pk = { x: r.x + Math.sin(r.a) * 12 * U, y: r.y - Math.cos(r.a) * 12 * U };
     rob.figs = rob.t > 0.3 ? [{ who: 'robber', x: lerp(d.x, pk.x, k), y: lerp(d.y, pk.y, k), pop: Math.min(1, (rob.t - 0.3) / 0.2), walk: true, bag: true, bounce: rob.fb.robber * 0.6 }] : [];
@@ -1729,10 +1943,143 @@ function updateRobber(dt){
     ev.swap = true; c.rider = 'robber'; r.rider = 'cop'; c.bounce = r.bounce = 0.5; r.tired = false;
     sClunk(); sCheer(); emoji(c.x, c.y - 10 * U, '⭐', 3, 22); sparkle(c.x, c.y, 20);
   }
-  if (t > 3.5){ rob.phase = 'away'; rob.figs = []; r.arrest = c.arrest = false; r.mustLeave = c.mustLeave = true; if (r.puffed){ r.puffed = false; r.parked = true; } }
+  if (t > 3.5){ rob.phase = 'away'; rob.figs = []; r.arrest = c.arrest = false; r.mustLeave = true; if (c.home){ c.stopAt = c.home.sPark; c.rush = true; } else c.mustLeave = true; if (r.puffed){ r.puffed = false; r.parked = true; } }
 }
 
-const tyres = (c, xs, Wd, tw, th) => { c.fillStyle = '#222'; tw = (tw || 7) * U; th = (th || 4) * U; for (const x of xs) for (const sy of [-1, 1]){ rr(c, x - tw / 2, sy * Wd / 2 - th / 2, tw, th, 1.5 * U); c.fill(); } };
+/* ---------- the stations' call-outs ---------- */
+const PEOPLE = { fire: '👨‍🚒', police: '👮', ambulance: '👩‍⚕️' };
+function homeVehicle(st){
+  const v = makeVehicle(st.kind, [laneSeg(1)], st.sPark, 1);
+  Object.assign(v, { home: st, parked: true, pull: 1 });
+  posVehicle(v); v.keys = vKeys(v);
+  return st.v = v;
+}
+const stnLit = st => st.bell > 0 || (st.call && (st.call.phase === 'ring' || st.call.phase === 'out')) || (st.kind === 'police' && !!rob.phase && rob.cop === st.v && rob.phase !== 'away');
+function startCall(st){
+  const v = st.v;
+  if (!v || st.call || !v.parked || v.stopAt !== undefined || v.rider || !going) return false;
+  if (st.kind === 'police') return !rob.phase && !rob.v && (startBankRobbery() || startRobber(v));
+  // somewhere a fair drive away, if there is one (with nowhere at all, it's a lap of the road with the siren on)
+  const L = KEYLEN.L1, free = spots.filter(sp => !sp.busy), ahead = sp => wrap(sp.s - v.s, L);
+  const far = free.filter(sp => ahead(sp) > 300 * U && ahead(sp) < L - 150 * U), spot = far.length ? pick(far) : free.length ? pick(free) : null;
+  if (spot) spot.busy = st;
+  st.call = { phase: 'ring', t: 0, spot, ev: {}, sirT: 0, k: 1, lap: 0, pop: 0 };
+  st.bell = 2; st.next = rand(150, 260);
+  if (spot){ if (st.kind === 'fire') sPop(); else { sBoing(); emoji(spot.x, spot.y - 10 * U, '💫', 2, 20); } }
+  return true;
+}
+function tapStation(st){
+  if (startCall(st)) return;
+  st.bell = Math.max(st.bell, 1); sKnock();
+  setTimeout(() => emoji(st.door.x, st.door.y - 6 * U, pick([PEOPLE[st.kind], '👋']), 1, 24), 380);
+}
+// the robber slips out of the pen when there's another robbery to do
+function jailBreak(){
+  for (const st of stations) if (st.jail){ st.jail = false; sBoing(); for (let i = 0; i < 4; i++) spawnPuff(st.pen.x + rand(-6, 6) * U, st.pen.y + rand(-6, 6) * U, 12 * U); emoji(st.pen.x, st.pen.y - 8 * U, '💨', 2, 20); }
+}
+function updateStations(dt){
+  for (const st of stations){
+    let v = st.v;
+    if (!v || v.gone || !vehicles.includes(v)){ v = homeVehicle(st); st.call = null; } // (it never drives off the map, but in case)
+    if (st.bell > 0){
+      st.bell -= dt;
+      if ((st.ringT -= dt) <= 0){
+        st.hi = !st.hi;
+        if (st.kind === 'fire'){ st.ringT = 0.12; tone(st.hi ? 1175 : 1109, 'triangle', 0, 0.002, 0.09, 0.05); }
+        else if (st.kind === 'ambulance'){ st.ringT = 0.26; tone(st.hi ? 880 : 660, 'sine', 0, 0.01, 0.2, 0.07); }
+        else { st.ringT = 0.18; tone(st.hi ? 1047 : 784, 'square', 0, 0.004, 0.1, 0.025); }
+      }
+    }
+    st.jailB = Math.max(0, st.jailB - dt);
+    st.figs = [];
+    const c = st.call;
+    if (st.kind === 'police') updateJail(st, v, dt);
+    else if (c) updateCall(st, c, v, dt);
+    else if (going && v.parked && (st.next -= dt) <= 0) startCall(st);
+    // out on the road with nothing to do: home it goes
+    if (!st.call && !v.parked && v.stopAt === undefined && !v.chase && !v.arrest && v !== rob.cop) v.stopAt = st.sPark;
+  }
+}
+// The police car's home with the robber in the back: he hops out, an officer walks him to the pen, and in he goes.
+function updateJail(st, v, dt){
+  if (!st.call){
+    if (v.parked && v.rider === 'robber' && v.stopAt === undefined) st.call = { phase: 'jail', t: 0, ev: {} };
+    else if (v.rider === 'robber') v.siren = Math.max(v.siren, 0.3); // lights on, all the way home
+    return;
+  }
+  const c = st.call, ev = c.ev; if (going) c.t += dt;
+  const t = c.t, k = ease((t - 0.9) / 1.3), n = STN_FRONT - 3, A = st.P(4, n), B = st.P(STN_W / 2 - 8, n), A2 = st.P(-6, n), B2 = st.P(STN_W / 2 - 19, n), D = st.door;
+  if (t > 0.3 && t < 2.3) st.figs.push({ who: 'robber', x: lerp(A.x, B.x, k), y: lerp(A.y, B.y, k), pop: Math.min(1, (t - 0.3) / 0.2), walk: t > 0.9 && t < 2.2 });
+  const kb = ease((t - 2.5) / 0.9);
+  if (t > 0.5 && t < 3.5) st.figs.push({ ch: '👮', x: t < 2.5 ? lerp(A2.x, B2.x, k) : lerp(B2.x, D.x, kb), y: t < 2.5 ? lerp(A2.y, B2.y, k) : lerp(B2.y, D.y, kb), pop: Math.min(1, (t - 0.5) / 0.2, (3.5 - t) / 0.15), walk: (t > 0.9 && t < 2.2) || (t > 2.5 && t < 3.4) });
+  if (t > 0.3 && !ev.out){ ev.out = true; v.rider = null; v.bounce = 0.4; sBoing(); }
+  if (t > 2.3 && !ev.in){ ev.in = true; st.jail = true; st.jailB = 0.5; sClunk(); sCheer(); sparkle(st.pen.x, st.pen.y, 18); emoji(st.pen.x, st.pen.y - 10 * U, '⭐', 3, 22); }
+  if (t > 3.5) st.call = null;
+}
+// The fire engine and the ambulance. ring: the station's bell, and the trouble appears; out: there, with the siren;
+// work: putting it right; back: home again.
+function updateCall(st, c, v, dt){
+  const sp = c.spot, fire = st.kind === 'fire', L = KEYLEN.L1, ev = c.ev;
+  if (going) c.t += dt;
+  const t = c.t, clear = () => going && laneGap('L1', v.s, gapBehind(), 0, v);
+  c.pop = clamp(c.pop + (c.phase === 'back' ? -dt * 3 : dt * 4), 0, 1);
+  if (sp && fire && c.k > 0 && Math.random() < dt * 3.5) spawnPuff(sp.x + rand(-4, 4) * U, sp.y - 8 * U, 22 * U);
+  if (c.phase === 'ring'){
+    if (t > 1.2 && clear()){
+      v.parked = false; v.rush = true; v.bounce = 0.4; c.phase = 'out'; c.t = 0;
+      v.stopAt = sp ? wrap(sp.s - (v.half + 32) * U, L) : undefined;
+    }
+  } else if (c.phase === 'out'){
+    v.siren = Math.max(v.siren, 0.3);
+    if (going && (c.sirT -= dt) <= 0){ sSiren(st.kind); c.sirT = 2.7; }
+    if (!sp){ c.lap += v.v * dt; if (c.lap > L - 280 * U){ v.rush = false; v.stopAt = st.sPark; c.phase = 'back'; c.t = 0; } }
+    else if (v.parked){ c.phase = 'work'; c.t = 0; }
+  } else if (c.phase === 'work'){
+    v.siren = Math.max(v.siren, 0.3); // lights on (no siren) while they work
+    const F = { x: v.x + Math.cos(v.a) * (v.half + 10) * U, y: v.y + Math.sin(v.a) * (v.half + 10) * U }, who = PEOPLE[st.kind];
+    let end = 5.1;
+    if (t > 0.3 && !ev.out){ ev.out = true; v.bounce = 0.4; sBoing(); }
+    if (fire){
+      if (t > 0.3 && t < 4.7) st.figs.push({ ch: who, x: F.x, y: F.y, pop: Math.min(1, (t - 0.3) / 0.2), size: 24 });
+      if (t > 0.9 && t < 3.9 && going){
+        if (!((ev.sprayT -= dt) > 0)){ ev.sprayT = 1.5; sSpray(); }
+        c.k = clamp(1 - (t - 1.2) / 2.7, 0, 1);
+        for (let i = 0; i < 2; i++){ // the hose (a 'dot' slows down as it goes, and gets there as it fades)
+          const T = 0.42, kx = 1 / 0.239, tx = sp.x + rand(-5, 5) * U, ty = sp.y + rand(-5, 5) * U;
+          fx.push({ t: 'dot', x: F.x, y: F.y - 3 * U, vx: (tx - F.x) * kx, vy: (ty - F.y + 3 * U) * kx, life: 0, max: T, r: rand(1.6, 2.8) * U, col: pick(['#4cc9f0', '#90e0ef', '#48a9e6', '#caf0f8']) });
+        }
+        if (Math.random() < dt * 5) spawnPuff(sp.x + rand(-6, 6) * U, sp.y - 4 * U, 14 * U);
+      }
+      if (t > 3.9 && !ev.done){ ev.done = true; c.k = 0; sCheer(); sparkle(sp.x, sp.y, 20); emoji(sp.x, sp.y - 10 * U, '⭐', 3, 22); for (let i = 0; i < 4; i++) spawnPuff(sp.x + rand(-6, 6) * U, sp.y + rand(-6, 6) * U, 12 * U); }
+      if (t > 4.7 && !ev.in){ ev.in = true; v.bounce = 0.4; sClunk(); }
+    } else {
+      end = 4.5;
+      const I = { x: lerp(F.x, sp.x, 0.6), y: lerp(F.y, sp.y, 0.6) }, k = t < 2.85 ? ease((t - 0.5) / 1) : 1 - ease((t - 2.9) / 1);
+      if (t > 0.3 && t < 4.1) st.figs.push({ ch: who, x: lerp(F.x, I.x, k), y: lerp(F.y, I.y, k), pop: Math.min(1, (t - 0.3) / 0.2), walk: (t > 0.5 && t < 1.5) || (t > 2.9 && t < 3.9), size: 24 });
+      if (t > 1.7 && t < 2.6) st.figs.push({ who: 'plaster', x: sp.x, y: sp.y, lift: 16 - 10 * ease((t - 1.7) / 0.7), pop: Math.min(1, (t - 1.7) / 0.15) });
+      if (t > 1.7 && !ev.pl){ ev.pl = true; sPop(); }
+      if (t > 2.6 && !ev.done){ ev.done = true; c.k = 0; sCheer(); sparkle(sp.x, sp.y, 16); emoji(sp.x, sp.y - 12 * U, '❤️', 3, 20); }
+      if (t > 3.1 && !ev.wave){ ev.wave = true; sHello(); emoji(sp.x, sp.y - 14 * U, '👋', 1, 24); }
+      if (t > 4.1 && !ev.in){ ev.in = true; v.bounce = 0.4; sClunk(); }
+    }
+    if (t > end && clear()){ v.parked = false; v.stopAt = st.sPark; c.phase = 'back'; c.t = 0; }
+  } else if (c.phase === 'back'){
+    if (sp && c.pop <= 0){ sp.busy = null; c.spot = null; }
+    if (v.parked && v.stopAt === undefined){ if (c.spot) c.spot.busy = null; st.call = null; st.next = rand(150, 260); }
+  }
+}
+// a sticking plaster (for the map, and for the 3D view's sprites)
+function drawPlaster(c, x, y, r){
+  c.save(); c.translate(x, y); c.rotate(-0.5);
+  c.fillStyle = '#f0c49a'; rr(c, -r * 1.7, -r * 0.6, r * 3.4, r * 1.2, r * 0.6); c.fill();
+  c.strokeStyle = '#cf9a68'; c.lineWidth = r * 0.14; c.stroke();
+  c.fillStyle = '#fbe9d6'; rr(c, -r * 0.55, -r * 0.5, r * 1.1, r, r * 0.15); c.fill();
+  c.fillStyle = '#cf9a68'; for (const sx of [-1, 1]) for (const [dx, dy] of [[0.95, -0.2], [1.25, 0.2], [0.95, 0.2], [1.25, -0.2]]){ circle(c, sx * dx * r, dy * r, r * 0.09); c.fill(); }
+  c.restore();
+}
+
+let noTyres = false; // the 3D view paints vehicle roofs with VDRAW, and gives them real wheels instead
+const tyres = (c, xs, Wd, tw, th) => { if (noTyres) return; c.fillStyle = '#222'; tw = (tw || 7) * U; th = (th || 4) * U; for (const x of xs) for (const sy of [-1, 1]){ rr(c, x - tw / 2, sy * Wd / 2 - th / 2, tw, th, 1.5 * U); c.fill(); } };
 const lamps = (c, L, Wd) => { c.fillStyle = '#fff3b0'; circle(c, L / 2 - 1.2 * U, -Wd / 2 + 3 * U, 1.9 * U); c.fill(); circle(c, L / 2 - 1.2 * U, Wd / 2 - 3 * U, 1.9 * U); c.fill(); };
 const cabGlass = (c, L, Wd, cab) => { c.fillStyle = '#bfe3ff'; rr(c, L / 2 - cab * 0.42, -Wd / 2 + 2.5 * U, cab * 0.26, Wd - 5 * U, 1.5 * U); c.fill(); };
 const blink = () => Math.floor(NOW * 7) % 2 === 0;
@@ -1903,16 +2250,19 @@ function drawRobber(c, x, y, r, up, bob){
   c.restore();
 }
 // the robber and the police officer on foot, when he's caught
+// everyone who's out of their vehicle: the robber and the police, and the stations' people
+function allFigs(){ let a = rob.figs; for (const st of stations) if (st.figs.length) a = a.concat(st.figs); return a; }
 function drawFigures(c, time){
-  for (const f of rob.figs){
+  for (const f of allFigs()){
     const bob = f.walk ? Math.abs(Math.sin(time * 12)) * 2.5 * U : 0, s = f.pop * (1 + (f.bounce || 0));
+    if (f.who === 'plaster'){ drawPlaster(c, f.x, f.y - f.lift * U, 5.5 * U * s); continue; }
     c.fillStyle = 'rgba(0,0,0,0.2)'; c.beginPath(); c.ellipse(f.x, f.y + 13 * U, 9 * U * s, 3 * U * s, 0, 0, TAU); c.fill();
     c.fillStyle = '#000'; // (colour emoji take their alpha from the fill colour)
     if (f.who === 'robber'){
       drawRobber(c, f.x, f.y, 8.5 * U * s, !f.bag, bob);
       if (f.bag){ c.fillStyle = '#000'; c.font = `${Math.max(1, Math.round(16 * U * s))}px ${EF}`; c.fillText('💰', f.x + 11 * U * s, f.y + 6 * U * s - bob); }
     }
-    else { c.font = `${Math.max(1, Math.round(26 * U * s))}px ${EF}`; c.fillText('👮', f.x, f.y - bob); }
+    else { c.font = `${Math.max(1, Math.round((f.size || 26) * U * s))}px ${EF}`; c.fillText(f.ch || '👮', f.x, f.y - bob); }
   }
 }
 function vehicleSound(v){
@@ -2306,28 +2656,33 @@ function drawSigns(c, time){
     c.save(); c.translate(q.x + sh, q.y);
     c.fillStyle = 'rgba(0,0,0,0.22)'; circle(c, 2.5 * U, 3.5 * U, R); c.fill();
     c.scale(k, k);
-    if (lit){
-      const f = lit === 2 ? 12 : 7;
-      c.strokeStyle = `rgba(255,176,0,${0.55 + 0.45 * Math.sin(time * f)})`; c.lineWidth = (lit === 2 ? 5 : 3.5) * U; circle(c, 0, 0, R + 3.5 * U); c.stroke();
-    }
-    c.fillStyle = '#f4f4f4'; circle(c, 0, 0, R); c.fill();
-    c.fillStyle = '#ffd23f'; circle(c, 0, 0, R - 2.5 * U); c.fill();
-    c.strokeStyle = '#2b2b2b'; c.lineWidth = 1.5 * U; circle(c, 0, 0, R - 2.5 * U); c.stroke();
-    if (sg.kind === 'crane'){ c.font = `${Math.round(19 * U)}px ${EF}`; c.fillStyle = '#000'; c.fillText('🏗️', 0, 1 * U); }
-    else if (sg.kind === 'col'){
-      // the next block's colour; "any colour" is a block of four
-      const B = 17 * U, draw = (x, y, s, col) => { c.fillStyle = col; rr(c, x, y, s, s, 2 * U); c.fill(); };
-      c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, -B / 2 + 1.5 * U, -B / 2 + 2 * U, B, B, 2.5 * U); c.fill();
-      if (build.pick < 0){ const h = B / 2; draw(-h, -h, h, TOY[0]); draw(0, -h, h, TOY[1]); draw(-h, 0, h, TOY[2]); draw(0, 0, h, TOY[3]); }
-      else draw(-B / 2, -B / 2, B, TOY[build.pick]);
-      c.fillStyle = 'rgba(255,255,255,0.35)'; rr(c, -B / 2 + 2 * U, -B / 2 + 2 * U, B * 0.35, B * 0.35, 1.5 * U); c.fill();
-    }
-    else {
-      const type = signType(sg.kind), real = vehicles.find(v => v.type === type && v.route === siteRoute);
-      const v = { color: real ? real.color : colorFor(type), tip: lit === 2 && type === 'tipper' ? 0.5 + 0.5 * Math.sin(time * 5) : 0, load: 1, drum: time * (lit ? 5 : 0.8) };
-      c.save(); c.rotate(-0.25); c.scale(0.54, 0.54); VDRAW[type](c, VT[type].len * U, VT[type].wid * U, v); c.restore();
-    }
+    signFace(c, sg, lit, time);
     c.restore();
+  }
+}
+// a sign's round face, centred on 0, 0 (the 3D view draws these too)
+function signFace(c, sg, lit, time){
+  const R = SIGN_R * U;
+  if (lit){
+    const f = lit === 2 ? 12 : 7;
+    c.strokeStyle = `rgba(255,176,0,${0.55 + 0.45 * Math.sin(time * f)})`; c.lineWidth = (lit === 2 ? 5 : 3.5) * U; circle(c, 0, 0, R + 3.5 * U); c.stroke();
+  }
+  c.fillStyle = '#f4f4f4'; circle(c, 0, 0, R); c.fill();
+  c.fillStyle = '#ffd23f'; circle(c, 0, 0, R - 2.5 * U); c.fill();
+  c.strokeStyle = '#2b2b2b'; c.lineWidth = 1.5 * U; circle(c, 0, 0, R - 2.5 * U); c.stroke();
+  if (sg.kind === 'crane'){ c.font = `${Math.round(19 * U)}px ${EF}`; c.fillStyle = '#000'; c.fillText('🏗️', 0, 1 * U); }
+  else if (sg.kind === 'col'){
+    // the next block's colour; "any colour" is a block of four
+    const B = 17 * U, draw = (x, y, s, col) => { c.fillStyle = col; rr(c, x, y, s, s, 2 * U); c.fill(); };
+    c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, -B / 2 + 1.5 * U, -B / 2 + 2 * U, B, B, 2.5 * U); c.fill();
+    if (build.pick < 0){ const h = B / 2; draw(-h, -h, h, TOY[0]); draw(0, -h, h, TOY[1]); draw(-h, 0, h, TOY[2]); draw(0, 0, h, TOY[3]); }
+    else draw(-B / 2, -B / 2, B, TOY[build.pick]);
+    c.fillStyle = 'rgba(255,255,255,0.35)'; rr(c, -B / 2 + 2 * U, -B / 2 + 2 * U, B * 0.35, B * 0.35, 1.5 * U); c.fill();
+  }
+  else {
+    const type = signType(sg.kind), real = vehicles.find(v => v.type === type && v.route === siteRoute);
+    const v = { color: real ? real.color : colorFor(type), tip: lit === 2 && type === 'tipper' ? 0.5 + 0.5 * Math.sin(time * 5) : 0, load: 1, drum: time * (lit ? 5 : 0.8) };
+    c.save(); c.rotate(-0.25); c.scale(0.54, 0.54); VDRAW[type](c, VT[type].len * U, VT[type].wid * U, v); c.restore();
   }
 }
 function drawDozer(c, d){
@@ -2438,9 +2793,9 @@ function drawWashBG(c){
     c.fillStyle = 'rgba(120,190,255,0.25)'; c.fillRect(-36 * U, -ROAD_HALF * U, 72 * U, ROAD_HALF * 2 * U); // wet road
     c.fillStyle = '#4b5058'; for (const x of [-20, 0, 20]) c.fillRect((x - 3) * U, -(LANE + 3) * U, 6 * U, 6 * U); // drains
     c.restore();
-    washWalls(c, w, 36 * U, hw, 7 * U);
+    if (!flat3) washWalls(c, w, 36 * U, hw, 7 * U);
   }
-  if (trainWash) washWalls(c, trainWash, 52 * U, 26 * U, 7 * U);
+  if (trainWash && !flat3) washWalls(c, trainWash, 52 * U, 26 * U, 7 * U);
 }
 function drawArch(c, w, hl, hw, time){
   const spin = w.spin, on = w.busy > 0;
@@ -2495,9 +2850,9 @@ function drawWorks(c, time){
 
 /* ================= particles ================= */
 const puffs = [], fx = [];
-function spawnPuff(x, y){
+function spawnPuff(x, y, h0){ // (h0: how high it starts in the 3D view, if not at a train's chimney)
   if (puffs.length > 220) puffs.shift();
-  puffs.push({ x, y, r: 4 * U, vr: rand(12, 18) * U, vx: rand(-6, 6) * U, vy: rand(-12, -4) * U, life: 0, max: rand(1.1, 1.6) });
+  puffs.push({ x, y, r: 4 * U, vr: rand(12, 18) * U, vx: rand(-6, 6) * U, vy: rand(-12, -4) * U, life: 0, max: rand(1.1, 1.6), h0 });
 }
 function coins(x, y, n){ // gold coins flying out of the robber's bag
   for (let i = 0; i < n; i++){
@@ -2594,6 +2949,7 @@ cv.addEventListener('pointerdown', e => {
   if (hit){
     try { cv.setPointerCapture(e.pointerId); } catch (_) {}
     const tr = hit.tr, near = nearestS(p.x, p.y, tr.head, TL * 0.3);
+    V3.cam.pick = tr; // 🎥 rides with the train he last touched
     drags.set(e.pointerId, { tr, k: hit.k, off: tr.head - near, sx: p.x, sy: p.y, moved: false, lastT: performance.now() });
     tr.drag++; tr.pause = 0;
     return;
@@ -2653,12 +3009,27 @@ function tapScene(x, y){
     if (f.who === 'robber') sGiggle(); else { sHello(); emoji(f.x, f.y - 16 * U, '👋', 1, 22); }
     rob.fb[f.who] = 0.35; return;
   }
+  for (const st of stations){
+    for (const f of st.figs) if (f.who !== 'plaster' && Math.hypot(x - f.x, y - f.y) < 18 * U){
+      if (f.who === 'robber') sGiggle(); else { sHello(); emoji(f.x, f.y - 16 * U, '👋', 1, 22); }
+      return;
+    }
+    const sp = st.call && st.call.spot;
+    if (sp && Math.hypot(x - sp.x, y - sp.y) < 20 * U){
+      if (st.kind === 'fire' && st.call.k > 0){ sPop(); for (let i = 0; i < 3; i++) spawnPuff(sp.x + rand(-6, 6) * U, sp.y - 6 * U, 20 * U); }
+      else { sHello(); emoji(sp.x, sp.y - 14 * U, st.kind === 'fire' ? '⭐' : '👋', 1, 22); }
+      return;
+    }
+    if (st.jail && Math.hypot(x - st.pen.x, y - st.pen.y) < 14 * U){ sGiggle(); st.jailB = 0.5; return; }
+  }
   const v = hitVehicle(x, y);
   if (!v && bank && inBank(x, y, 6 * U)){ tapBank(); return; }
+  if (!v){ const st = stations.find(o => inStation(o, x, y, 4 * U)); if (st){ tapStation(st); sparkle(x, y, 8); return; } }
   if (v){
     if (v.route === siteRoute && v.seg >= 2 && v.seg <= 4) sendOff(v); // in the site: tip or pour now, then off it goes
     else if (v.robber) tapRobber(v);
     else if (v === rob.cop && rob.v) v.rider === 'robber' ? sGiggle() : sWhoop();
+    else if (v.home && startCall(v.home)){} // at its station: off it goes on a call
     else vehicleSound(v);
     v.bounce = 0.5; sparkle(v.x, v.y, 8); return;
   }
@@ -2757,7 +3128,7 @@ const bReset = $('bReset');
 bReset.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); audio(); sClick(); resetHold = NOW || 1e-3; bReset.classList.add('hold'); });
 for (const t of ['pointerup', 'pointercancel', 'pointerleave']) bReset.addEventListener(t, () => { resetHold = 0; bReset.classList.remove('hold'); });
 function resetAll(){
-  drags.clear();
+  drags.clear(); V3.reset();
   trains.length = 0; flowers.length = 0; fx.length = 0; puffs.length = 0;
   build.blocks = []; build.fill = []; build.done = false; build.doneT = 0; build.pick = -1;
   Object.assign(xing, { active: false, bar: 0, bellT: 0, anyInZone: false, waiting: false, waitT: 0, hold: false, holdT: 0, went: false });
@@ -2837,6 +3208,1113 @@ try { // carry on from the other game (or from a moment ago), unless it's been a
 } catch (_) {}
 bedLabel();
 
+/* ================= 3D view ================= */
+// He asked to "see the train driver". 🎥 swoops the camera down off the map to ride along behind a train's cab, where
+// the driver stands at the controls; 🎥 again goes into the cab, over his shoulder; and again flies back up to the
+// map. Tapping the 3D view toots the train, and the driver turns and waves. Dragging sideways swings the camera round
+// the train (or looks round, in the cab), and it drifts back after a moment.
+// The game runs just as before: this only draws it another way, on a second canvas (#c3), with a small WebGL renderer
+// written here (no libraries, so it still works offline). The ground is the map's own background art (drawBG with
+// what stands up left off) laid flat. Everything that stands up is a simple model of boxes, cylinders and balls, and
+// the emoji are sprites that face the camera.
+// 3D points are [x, height, y], with x and y as on the map. Models are made in U units with x forward and y to the
+// right (as in VDRAW), and placed with a scale of U.
+const V3 = (() => {
+const cv3 = $('c3'), bCam = $('bCam');
+const cam = { mode: 0, k: 1, dur: 1, op: 0, from: null, pose: null, tr: null, pick: null, ha: 0, orb: 0, idle: 9, lift: 0, tun: 0,
+  fromMap: false, hello: false, dirty: true, drag: null }; // mode: 0 the map, 1 behind the cab, 2 in the cab; k: 0 → 1 getting there
+const FOV = 50 * Math.PI / 180, TH = 3, MH = 120; // TH: how high the wooden track stands; MH: the crane's mast (U)
+const TUN = { RI: 22, HW: 38, HA: 18, RO: 48, HO: 68 }; // the railway tunnel: inside half-width, wall and arch height; the hill
+const SUN = (() => { const v = [-0.42, 0.8, -0.43], l = Math.hypot(...v); return v.map(x => x / l); })(); // from the top left, as on the map
+let gx = null; // the renderer, made the first time it's needed (false: no WebGL here)
+const on = () => cam.mode > 0 || cam.k < 1;
+bCam.hidden = !(window.WebGLRenderingContext || window.__CHOO_DEBUG);
+
+/* ---------- the camera ---------- */
+// straight down on the whole map, just as the 2D view shows it: where the swoop starts and ends
+function mapPose(){ return { x: W / 2, y: H / 2, h: H / 2 / Math.tan(FOV / 2), yaw: -Math.PI / 2, pitch: -Math.PI / 2, fov: FOV }; }
+function pickTrain(){ for (const t of [cam.pick, cam.tr]) if (t && trains.includes(t)) return t; return trains[0] || null; }
+// beside the cab, a little behind it, on the driver's side (1); or in the cab, at the other window, looking out
+// past the boiler (2: the driver's on the left, about 1 radian round, where a tap turns to look at him)
+const LOOK_DRIVER = -1;
+function trainPose(mode, g, lift){
+  const ca = Math.cos(g.a), sa = Math.sin(g.a), L = g.len / U;
+  if (mode === 2){
+    const bx = (-L / 2 + 3) * U, by = 8.5 * U;
+    return { x: g.x + ca * bx - sa * by, y: g.y + sa * bx + ca * by, h: (TH + 36) * U, yaw: cam.ha - 0.05 + clamp(cam.orb, -1.6, 1.6), pitch: -0.08, fov: 66 * Math.PI / 180 };
+  }
+  const cx = (-L / 2 + L * 0.18) * U, Cx = g.x + ca * cx, Cy = g.y + sa * cx;
+  const t = cam.ha + Math.PI + 1.0 + cam.orb, D = 84 * U;
+  const ex = Cx + Math.cos(t) * D, ey = Cy + Math.sin(t) * D, k = cam.tun;
+  let tx = Cx + Math.cos(cam.ha) * 6 * U, ty = Cy + Math.sin(cam.ha) * 6 * U, th = (TH + 28) * U;
+  if (k > 0.001){ const o = at(tunnel.s1 + 30 * U); tx = lerp(tx, o.x, k); ty = lerp(ty, o.y, k); th = lerp(th, (TH + 10) * U, k); } // in the tunnel: watching for it to come out
+  const eh = (TH + 52) * U + lift;
+  return { x: ex, y: ey, h: eh, yaw: Math.atan2(ty - ey, tx - ex), pitch: Math.atan2(th - eh, Math.hypot(tx - ex, ty - ey)), fov: FOV, tx, ty, th };
+}
+// how much higher the camera must be to see over the tunnel's hill to what it's watching (and not be in the hill)
+function sightLift(P){
+  let need = 0;
+  for (let f = 0.2; f <= 1.001; f += 0.1){
+    const hill = hillAt(lerp(P.tx, P.x, f), lerp(P.ty, P.y, f));
+    if (hill > 0) need = Math.max(need, P.th + (hill + 10 * U - P.th) / f - P.h);
+  }
+  return need;
+}
+// how high the tunnel's hill is here (the camera rises over it rather than going through it)
+function hillAt(x, y){
+  if (!tunnel) return 0;
+  const span = mod(tunnel.s1 - tunnel.s0); let d = 1e9;
+  for (let s = -8 * U; s <= span + 8 * U; s += 6 * U){ const p = at(tunnel.s0 + s); d = Math.min(d, Math.hypot(x - p.x, y - p.y)); }
+  const r = d / (TUN.RO * U); return r < 1 ? TUN.HO * U * Math.sqrt(1 - r * r) : 0;
+}
+// road vehicles go up over the level crossing's deck (the track stands up off the grass)
+function deckH(x, y){
+  if (!spur) return 0;
+  const p = spur.p, dx = x - p.x, dy = y - p.y, ca = Math.cos(p.a), sa = Math.sin(p.a);
+  if (Math.abs(dx * ca + dy * sa) > (ROAD_HALF + 2) * U) return 0;
+  return TH * U * clamp((25 * U - Math.abs(-dx * sa + dy * ca)) / (10 * U), 0, 1);
+}
+function setCam(m){
+  if (m && !trains.length) return false;
+  const fromMap = !on();
+  cam.from = fromMap ? mapPose() : cam.pose; cam.fromMap = fromMap;
+  cam.mode = m; cam.k = 0; cam.dur = fromMap || !m ? 1.8 : 1.1; cam.drag = null;
+  if (m){
+    const tr = pickTrain();
+    if (tr !== cam.tr || fromMap){ cam.tr = tr; cam.ha = tr.geo[0] ? tr.geo[0].a : 0; }
+    if (fromMap){ cam.hello = true; cam.orb = 0; cam.lift = 0; }
+  }
+  cv3.hidden = false;
+  return true;
+}
+function sWhoosh(up){
+  const a = audio(); if (!a) return;
+  const t = a.currentTime, s = noise(a), f = a.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.4;
+  f.frequency.setValueAtTime(up ? 280 : 1700, t); f.frequency.exponentialRampToValueAtTime(up ? 1700 : 280, t + 1.2);
+  const g = envGain(a, t, 0.25, 0.35, 1); s.connect(f); f.connect(g); s.start(t); s.stop(t + 1.5);
+}
+// 🎥: the map → behind the cab → in the cab → the map
+onPress(bCam, () => {
+  if (!window.__CHOO_DEBUG && !ensure()){ sNo(); shakeBtn(bCam); bCam.hidden = true; return; }
+  const m = (cam.mode + 1) % 3;
+  if (!setCam(m)){ sNo(); shakeBtn(bCam); return; }
+  if (m === 1) sWhoosh(false); else if (m === 2) sClunk(); else sWhoosh(true);
+});
+function tick(dt){
+  if (!on()) return;
+  if (cam.mode && !trains.includes(cam.tr)){ // its train's gone (or was taken away): ride with another
+    const tr = pickTrain();
+    if (!tr){ reset(); return; }
+    Object.assign(cam, { from: cam.pose, tr, k: 0, dur: 1.2, fromMap: false, ha: tr.geo[0] ? tr.geo[0].a : cam.ha });
+  }
+  const g = cam.mode ? cam.tr.geo[0] : null;
+  if (g) cam.ha = lerpAng(cam.ha, g.a, 1 - Math.exp(-dt * (cam.mode === 2 ? 4 : 2.2)));
+  const inside = g && tunnel && inTunnel(cam.tr.head - g.len * 0.3);
+  cam.tun += ((inside ? 1 : 0) - cam.tun) * (1 - Math.exp(-dt * 1.8));
+  if (!cam.drag && (cam.idle += dt) > 2.5) cam.orb *= Math.exp(-dt * 1.4);
+  if (cam.mode === 1) cam.lift += (sightLift(trainPose(1, g, 0)) - cam.lift) * (1 - Math.exp(-dt * 2.5));
+  else cam.lift = 0;
+  const to = g ? trainPose(cam.mode, g, cam.lift) : mapPose();
+  cam.k = Math.min(1, cam.k + dt / cam.dur);
+  const e = ease(cam.k), f = cam.from || to;
+  cam.pose = cam.k >= 1 ? to : { x: lerp(f.x, to.x, e), y: lerp(f.y, to.y, e), h: lerp(f.h, to.h, e), yaw: lerpAng(f.yaw, to.yaw, e), pitch: lerp(f.pitch, to.pitch, e), fov: lerp(f.fov, to.fov, e) };
+  // fades in over the map at the start of the swoop, and out again at the end of the flight back up
+  cam.op = cam.mode ? (cam.fromMap ? clamp(cam.k / 0.15, 0, 1) : 1) : clamp((1 - cam.k) / 0.15, 0, 1);
+  if (cam.k >= 1){
+    if (cam.hello && cam.mode === 1){ cam.hello = false; tootTrain(cam.tr); } // he says hello
+    if (!cam.mode) reset();
+  }
+}
+function reset(){ Object.assign(cam, { mode: 0, k: 1, op: 0, tr: null, drag: null, orb: 0, lift: 0, tun: 0, hello: false }); cv3.hidden = true; }
+
+// taps on the 3D view: a toot (and a wave); a drag swings the camera round
+cv3.addEventListener('pointerdown', e => {
+  e.preventDefault(); if (bed.asleep) return; audio();
+  cam.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, orb: cam.orb, moved: false };
+  try { cv3.setPointerCapture(e.pointerId); } catch (_) {}
+});
+cv3.addEventListener('pointermove', e => {
+  const d = cam.drag; if (!d || d.id !== e.pointerId || bed.asleep) return;
+  const dx = e.clientX - d.x;
+  if (!d.moved && Math.abs(dx) + Math.abs(e.clientY - d.y) > 10) d.moved = true;
+  if (d.moved){ cam.orb = d.orb + dx / Math.max(240, W) * (cam.mode === 2 ? -2.4 : 3.6); cam.idle = 0; }
+});
+const up3 = e => {
+  const d = cam.drag; if (!d || d.id !== e.pointerId) return;
+  cam.drag = null; cam.idle = 0;
+  if (!d.moved && cam.mode && cam.tr && !bed.asleep){ tootTrain(cam.tr); if (cam.mode === 2) cam.orb = LOOK_DRIVER; } // (in the cab: turn to see him wave)
+};
+cv3.addEventListener('pointerup', up3); cv3.addEventListener('pointercancel', up3);
+cv3.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ---------- matrices (column-major, as WebGL wants them) ---------- */
+const M4 = () => new Float32Array(16), MT = M4(), VM = M4(), PM = M4(), VP = M4(), MC = M4(), ML = M4(), MO = M4();
+function mMul(o, a, b){
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++){ let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k]; MT[c * 4 + r] = s; }
+  o.set(MT); return o;
+}
+// at (x, y) and height h, turned to a (like the map's angles), scaled along, across and up
+function mPlace(o, x, y, h, a, sx, sy, sh){
+  const c = Math.cos(a), s = Math.sin(a);
+  o[0] = c * sx; o[1] = 0; o[2] = s * sx; o[3] = 0; o[4] = 0; o[5] = sh; o[6] = 0; o[7] = 0;
+  o[8] = -s * sy; o[9] = 0; o[10] = c * sy; o[11] = 0; o[12] = x; o[13] = h; o[14] = y; o[15] = 1; return o;
+}
+// tipped nose-up by f (turning about the model's width), then scaled
+function mTip(o, x, y, h, f, sx, sy, sh){
+  const c = Math.cos(f), s = Math.sin(f); o.fill(0);
+  o[0] = c * sx; o[1] = s * sx; o[4] = -s * sh; o[5] = c * sh; o[10] = sy; o[12] = x; o[13] = h; o[14] = y; o[15] = 1; return o;
+}
+// rolled by f (turning about the model's length): + swings something hanging down out to the left
+function mRoll(o, x, y, h, f){
+  const c = Math.cos(f), s = Math.sin(f); o.fill(0);
+  o[0] = 1; o[5] = c; o[6] = s; o[9] = -s; o[10] = c; o[12] = x; o[13] = h; o[14] = y; o[15] = 1; return o;
+}
+function perspM(o, fov, asp, n, f){ const t = 1 / Math.tan(fov / 2); o.fill(0); o[0] = t / asp; o[5] = t; o[10] = (f + n) / (n - f); o[11] = -1; o[14] = 2 * f * n / (n - f); }
+function viewM(o, P){
+  const cp = Math.cos(P.pitch), sp = Math.sin(P.pitch), cy = Math.cos(P.yaw), sy = Math.sin(P.yaw);
+  const f = [cp * cy, sp, cp * sy], u = [-sp * cy, cp, -sp * sy], e = [P.x, P.h, P.y];
+  const r = [f[1] * u[2] - f[2] * u[1], f[2] * u[0] - f[0] * u[2], f[0] * u[1] - f[1] * u[0]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  o[0] = r[0]; o[4] = r[1]; o[8] = r[2]; o[12] = -dot(r, e);
+  o[1] = u[0]; o[5] = u[1]; o[9] = u[2]; o[13] = -dot(u, e);
+  o[2] = -f[0]; o[6] = -f[1]; o[10] = -f[2]; o[14] = dot(f, e);
+  o[3] = 0; o[7] = 0; o[11] = 0; o[15] = 1;
+}
+
+/* ---------- building models ---------- */
+// A model is a list of triangles, 12 numbers a corner: position, normal, colour (alpha 2 = it glows: no shading, and
+// it doesn't darken at night) and texture position (-1: none). Corners are given as [x, y, height].
+const COLS = new Map();
+function col3(s, glow){
+  const key = s + (glow ? '!' : ''); let c = COLS.get(key); if (c) return c;
+  let r, g, b;
+  if (s[0] === '#'){ const x = s.length === 4 ? s.slice(1).replace(/./g, d => d + d) : s.slice(1), n = parseInt(x, 16); r = n >> 16; g = n >> 8 & 255; b = n & 255; }
+  else [r, g, b] = s.match(/\d+/g).map(Number);
+  c = [r / 255, g / 255, b / 255, glow ? 2 : 1]; COLS.set(key, c); return c;
+}
+const mb = () => ({ v: [] });
+function V(m, p, n, c, t){ m.v.push(p[0], p[2], p[1], n[0], n[2], n[1], c[0], c[1], c[2], c[3], t ? t[0] : -1, t ? t[1] : -1); }
+function quad(m, a, b, c, d, n, col, uv){
+  V(m, a, n, col, uv && uv[0]); V(m, b, n, col, uv && uv[1]); V(m, c, n, col, uv && uv[2]);
+  V(m, a, n, col, uv && uv[0]); V(m, c, n, col, uv && uv[2]); V(m, d, n, col, uv && uv[3]);
+}
+function tri(m, a, b, c, n, col){ V(m, a, n, col); V(m, b, n, col); V(m, c, n, col); }
+function box(m, x0, x1, y0, y1, h0, h1, col, top, topUV){
+  quad(m, [x0, y0, h1], [x1, y0, h1], [x1, y1, h1], [x0, y1, h1], [0, 0, 1], top || col, topUV);
+  quad(m, [x0, y0, h0], [x1, y0, h0], [x1, y1, h0], [x0, y1, h0], [0, 0, -1], col);
+  quad(m, [x0, y0, h0], [x0, y1, h0], [x0, y1, h1], [x0, y0, h1], [-1, 0, 0], col);
+  quad(m, [x1, y0, h0], [x1, y1, h0], [x1, y1, h1], [x1, y0, h1], [1, 0, 0], col);
+  quad(m, [x0, y0, h0], [x1, y0, h0], [x1, y0, h1], [x0, y0, h1], [0, -1, 0], col);
+  quad(m, [x0, y1, h0], [x1, y1, h0], [x1, y1, h1], [x0, y1, h1], [0, 1, 0], col);
+}
+// a cylinder (or a cone, with r2 = 0) from A to B; col can be a list of colours, taken in turn round it
+function cyl(m, A, B, r, col, cap, segs, r2){
+  segs = segs || 10; if (r2 === undefined) r2 = r;
+  const d = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], L = Math.hypot(d[0], d[1], d[2]) || 1, n = d.map(x => x / L);
+  const ref = Math.abs(n[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+  let e1 = [n[1] * ref[2] - n[2] * ref[1], n[2] * ref[0] - n[0] * ref[2], n[0] * ref[1] - n[1] * ref[0]];
+  const l1 = Math.hypot(e1[0], e1[1], e1[2]); e1 = e1.map(x => x / l1);
+  const e2 = [n[1] * e1[2] - n[2] * e1[1], n[2] * e1[0] - n[0] * e1[2], n[0] * e1[1] - n[1] * e1[0]];
+  const ring = t => { const c = Math.cos(t), s = Math.sin(t); return [e1[0] * c + e2[0] * s, e1[1] * c + e2[1] * s, e1[2] * c + e2[2] * s]; };
+  const at_ = (o, q, rr_) => [o[0] + q[0] * rr_, o[1] + q[1] * rr_, o[2] + q[2] * rr_], nb = [-n[0], -n[1], -n[2]];
+  for (let i = 0; i < segs; i++){
+    const q0 = ring(i / segs * TAU), q1 = ring((i + 1) / segs * TAU), c = Array.isArray(col[0]) ? col[i % col.length] : col;
+    const a0 = at_(A, q0, r), a1 = at_(A, q1, r), b0 = at_(B, q0, r2), b1 = at_(B, q1, r2);
+    V(m, a0, q0, c); V(m, a1, q1, c); V(m, b1, q1, c); V(m, a0, q0, c); V(m, b1, q1, c); V(m, b0, q0, c);
+    if (cap !== false){
+      const cc = cap || c;
+      V(m, A, nb, cc); V(m, a1, nb, cc); V(m, a0, nb, cc);
+      if (r2 > 0){ V(m, B, n, cc); V(m, b0, n, cc); V(m, b1, n, cc); }
+    }
+  }
+}
+// a ball, squashed to sh of its height; half: just the top half
+function ball(m, cx, cy, ch, r, col, sh, segs, rings, half){
+  sh = sh || 1; segs = segs || 8; rings = rings || 5;
+  const top = half ? Math.PI / 2 : Math.PI;
+  const P = (j, i) => { const th = j / rings * top, ph = i / segs * TAU, n = [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), Math.cos(th)]; return [n, [cx + n[0] * r, cy + n[1] * r, ch + n[2] * r * sh]]; };
+  for (let j = 0; j < rings; j++) for (let i = 0; i < segs; i++){
+    const [n00, p00] = P(j, i), [n01, p01] = P(j, i + 1), [n11, p11] = P(j + 1, i + 1), [n10, p10] = P(j + 1, i);
+    V(m, p00, n00, col); V(m, p01, n01, col); V(m, p11, n11, col); V(m, p00, n00, col); V(m, p11, n11, col); V(m, p10, n10, col);
+  }
+}
+// a pitched roof with its ridge along x
+function gable(m, x0, x1, y0, y1, h0, h1, col, endCol){
+  const ym = (y0 + y1) / 2, sl = Math.hypot(h1 - h0, ym - y0);
+  quad(m, [x0, y0, h0], [x1, y0, h0], [x1, ym, h1], [x0, ym, h1], [0, -(h1 - h0) / sl, (ym - y0) / sl], col);
+  quad(m, [x0, y1, h0], [x1, y1, h0], [x1, ym, h1], [x0, ym, h1], [0, (h1 - h0) / sl, (ym - y0) / sl], col);
+  tri(m, [x0, y0, h0], [x0, y1, h0], [x0, ym, h1], [-1, 0, 0], endCol || col);
+  tri(m, [x1, y0, h0], [x1, y1, h0], [x1, ym, h1], [1, 0, 0], endCol || col);
+}
+// puts a model (made in U units) into the world's model at (x, y) and height h, turned to a
+function place(dst, src, x, y, h, a, s){
+  const c = Math.cos(a), sn = Math.sin(a), v = src.v, o = dst.v;
+  for (let i = 0; i < v.length; i += 12){
+    const px = v[i], ph = v[i + 1], pz = v[i + 2], nx = v[i + 3], nz = v[i + 5];
+    o.push(x + s * (px * c - pz * sn), h + s * ph, y + s * (px * sn + pz * c), nx * c - nz * sn, v[i + 4], nx * sn + nz * c, v[i + 6], v[i + 7], v[i + 8], v[i + 9], v[i + 10], v[i + 11]);
+  }
+}
+
+/* ---------- the models ---------- */
+// the engine: frames, footplate, boiler with brass bands, smokebox, chimney, dome and headlamp; and an open cab (open
+// at the back, and above the waist at the sides, with big front windows) so you can see the driver from anywhere.
+// Inside: the firebox door glowing and the regulator. The wheels and the driver are separate (they move).
+const ENG = { L: 62, cab: 62 * 0.36, dx: -31 + 62 * 0.36 * 0.55, dy: -6.5, floor: 12 };
+function engineModel(color){
+  const m = mb(), L = ENG.L, W2 = 15, x0 = -L / 2, xc = x0 + ENG.cab, xf = L / 2;
+  const body = col3(color), cab = col3(shade(color, -0.25)), roof = col3(shade(color, 0.28)), boiler = col3(shade(color, 0.12));
+  const dark = col3('#2b2b2b'), black = col3('#262626'), gold = col3('#f2c14e');
+  box(m, x0 + 2, xf - 2, -10, 10, 2.5, 8, dark);
+  box(m, x0, xf - 1, -W2, W2, 8, 12, body);
+  cyl(m, [xc, 0, 21.5], [xf - 13, 0, 21.5], 9.5, boiler, boiler, 16);
+  for (const bx of [xc + 9, xc + 20]) cyl(m, [bx, 0, 21.5], [bx + 1.4, 0, 21.5], 9.9, gold, gold, 16);
+  cyl(m, [xf - 13, 0, 21.5], [xf - 3, 0, 21.5], 10.2, black, col3('#3d3d3d'), 16);
+  cyl(m, [xf - 8, 0, 29], [xf - 8, 0, 41], 3.8, black, black, 10);
+  cyl(m, [xf - 8, 0, 39.5], [xf - 8, 0, 42.5], 4.8, black, black, 10);
+  const dmx = xc + (xf - xc) * 0.34;
+  cyl(m, [dmx, 0, 29], [dmx, 0, 34], 4.4, gold, gold, 12); ball(m, dmx, 0, 34, 4.4, gold, 0.8, 12, 3, true);
+  cyl(m, [xc + 3, 0, 30], [xc + 3, 0, 36], 1.3, gold, gold, 8);
+  box(m, xf - 1, xf + 2, -14, 14, 5, 12, col3('#3b2b20'));
+  for (const y of [-9, 9]){ cyl(m, [xf + 2, y, 8.5], [xf + 5, y, 8.5], 1.4, dark, dark, 8); cyl(m, [xf + 5, y, 8.5], [xf + 6, y, 8.5], 2.8, dark, dark, 10); }
+  box(m, xf - 7, xf - 3, -2.6, 2.6, 31, 35.5, black); box(m, xf - 3, xf - 2.7, -1.9, 1.9, 31.6, 34.9, col3('#fff3b0', true));
+  // the cab
+  box(m, xc - 1.5, xc, -W2, W2, 12, 24, cab);
+  box(m, xc - 1.5, xc, -W2, -12.5, 24, 42, cab); box(m, xc - 1.5, xc, 12.5, W2, 24, 42, cab);
+  box(m, xc - 1.5, xc, -W2, W2, 39.5, 42, cab);
+  for (const s of [-1, 1]){
+    const y0 = s > 0 ? W2 - 1.6 : -W2, y1 = y0 + 1.6;
+    box(m, x0, xc - 1.5, y0, y1, 12, 25, cab);
+    box(m, x0, x0 + 2, y0, y1, 25, 42, cab);
+  }
+  box(m, x0, x0 + 1.4, -W2, W2, 12, 18, cab);
+  box(m, x0 - 2, xc + 1.5, -W2 - 1.5, W2 + 1.5, 42, 44.5, roof);
+  box(m, xc - 5, xc - 1.5, -6, 6, 12, 23, col3('#3a3a3a'));
+  box(m, xc - 5.25, xc - 5, -2.6, 2.6, 15, 19.5, col3('#ff8a1a', true));
+  box(m, xc - 4.4, xc - 1.5, -3, -1.4, 23, 26, gold);
+  return m;
+}
+function wagonModel(color){
+  const m = mb(), L = 48, W2 = 15, c = col3(color), floor = col3(shade(color, -0.22)), rim = col3(shade(color, -0.12)), dark = col3('#2b2b2b');
+  box(m, -L / 2 + 2, L / 2 - 2, -10, 10, 2.5, 8, dark);
+  box(m, -L / 2, L / 2, -W2, W2, 8, 11, floor);
+  box(m, -L / 2, L / 2, -W2, -W2 + 2, 11, 20, c); box(m, -L / 2, L / 2, W2 - 2, W2, 11, 20, c);
+  box(m, -L / 2, -L / 2 + 2, -W2 + 2, W2 - 2, 11, 20, c); box(m, L / 2 - 2, L / 2, -W2 + 2, W2 - 2, 11, 20, c);
+  box(m, -L / 2 - 0.4, L / 2 + 0.4, -W2 - 0.4, -W2 + 2.4, 20, 21.5, rim); box(m, -L / 2 - 0.4, L / 2 + 0.4, W2 - 2.4, W2 + 0.4, 20, 21.5, rim);
+  box(m, -L / 2 - 0.4, -L / 2 + 2.4, -W2 + 2.4, W2 - 2.4, 20, 21.5, rim); box(m, L / 2 - 2.4, L / 2 + 0.4, -W2 + 2.4, W2 - 2.4, 20, 21.5, rim);
+  for (const x of [-1, 1]) for (const y of [-9, 9]) cyl(m, [x * L / 2, y, 8], [x * (L / 2 + 2.5), y, 8], 2, dark, dark, 8);
+  return m;
+}
+// a wheel: radius 1, 1 thick (across), with a bar across its face so you can see it turning
+function wheelModel(hub){
+  const m = mb(), tyre = col3('#2b2b2b'), h = col3(hub), bar = col3('#d8d8d8');
+  cyl(m, [0, -0.5, 0], [0, 0.5, 0], 1, tyre, h, 14);
+  box(m, -0.8, 0.8, -0.53, 0.53, -0.13, 0.13, bar); box(m, -0.13, 0.13, -0.53, 0.53, -0.8, 0.8, bar);
+  return m;
+}
+// the driver: blue overalls and a red neckerchief. His feet are at 0; his arms are separate (he waves).
+function driverBody(){
+  const m = mb(), blue = col3('#2f5597');
+  box(m, -2.6, 2.6, -3.6, 3.6, 0, 9, blue);
+  box(m, -3, 3, -4.6, 4.6, 9, 15, blue);
+  box(m, -3.1, 3.1, -2.4, 2.4, 10.5, 14.2, col3('#3a65ad'));
+  box(m, -2.3, 2.3, -2.3, 2.3, 15, 16.6, col3('#e63946'));
+  return m;
+}
+// his arm reaching forward to the regulator, from the shoulder at 0
+function driverReach(){ const m = mb(), blue = col3('#2f5597'); cyl(m, [0, 0, 0], [4.6, -0.3, -1.2], 1.4, blue, blue, 6); ball(m, 5.2, -0.4, -1.3, 1.7, col3('#f5c7a0'), 1, 6, 4); return m; }
+// his head (its middle at 0, looking along x): a big moustache and an engine driver's cap with a peak and a badge
+function driverHead(){
+  const m = mb(), skin = col3('#f5c7a0'), cap = col3('#2b3a55'), dark = col3('#2a1d14');
+  ball(m, 0, 0, 0, 4, skin, 1.05, 12, 8);
+  for (const s of [-1, 1]){ ball(m, 3.55, s * 1.45, 0.45, 0.6, dark, 1, 8, 5); ball(m, 3.1, s * 2.5, -0.9, 0.95, col3('#f2a59a'), 0.8, 8, 4); }
+  box(m, 3.5, 4.4, -2.1, 2.1, -2, -1.1, col3('#6b4423'));
+  ball(m, 4, 0, -0.5, 0.9, col3('#eaa98a'), 1, 6, 4);
+  cyl(m, [0, 0, 1.7], [0, 0, 3.9], 4.3, cap, cap, 14);
+  cyl(m, [0, 0, 3.5], [0, 0, 4.7], 4.75, cap, cap, 14);
+  box(m, 2.8, 6.2, -3.1, 3.1, 1.6, 2.2, col3('#1d2638'));
+  box(m, 4.3, 4.7, -0.7, 0.7, 2.6, 3.6, col3('#f2c14e'));
+  return m;
+}
+// his waving arm, hanging from the shoulder at 0
+function driverArm(){ const m = mb(); cyl(m, [0, 0, 0], [0, 0, -8], 1.4, col3('#2f5597'), col3('#2f5597'), 6); ball(m, 0, 0, -9, 1.8, col3('#f5c7a0'), 1, 6, 4); return m; }
+
+// road vehicles: blocks with their own map art (VDRAW) on the roof, like stickers, and windows, stripes and wheels on
+// the sides. segs: [front, back (as parts of the length), height, side colour ('C' its colour, 'D' darker)]
+const VS3 = {
+  car:       { segs: [[-0.5, 0.5, 12, 'C']], glass: [-0.3, 0.24, 7.5, 11], wheels: [[-0.3, 4], [0.3, 4]] },
+  police:    { segs: [[-0.5, 0.5, 12, '#f4f4f4']], glass: [-0.3, 0.24, 7.5, 11], band: ['#1d4ed8', 4.5, 6.5], wheels: [[-0.3, 4], [0.3, 4]] },
+  robber:    { segs: [[-0.5, 0.5, 9, '#2b2d42']], wheels: [[-0.3, 4], [0.3, 4]] },
+  bus:       { segs: [[-0.5, 0.5, 24, 'C']], glass: [-0.44, 0.44, 15, 21], wheels: [[-0.32, 4.5], [0.3, 4.5]] },
+  lorry:     { segs: [[-0.5, 0.2, 19, '#f1f1f1'], [0.24, 0.5, 17, 'C']], glass: [0.3, 0.46, 11, 15], wheels: [[-0.38, 4], [-0.2, 4], [0.32, 4]] },
+  fire:      { segs: [[-0.5, 0.5, 17, '#d62828']], glass: [0.28, 0.46, 11, 15], band: ['#ffd23f', 8, 9.5], wheels: [[-0.32, 4.5], [0.28, 4.5]] },
+  ambulance: { segs: [[-0.5, 0.25, 19, '#fbfbf2'], [0.25, 0.5, 16, '#ffd400']], glass: [0.3, 0.46, 10, 14], cheq: [8, 12, 0.25], wheels: [[-0.3, 4], [0.3, 4]] },
+  tractor:   { segs: [[-0.5, -0.06, 20, 'D'], [-0.06, 0.48, 11, 'C']], glass: [-0.44, -0.1, 12, 18], wheels: [[-0.26, 7.5], [0.32, 4]] },
+  digger:    { segs: [[-0.5, -0.2, 8, '#d99a00'], [-0.2, 0.34, 16, '#f4b400'], [0.36, 0.5, 6, '#777777']], glass: [-0.14, 0.1, 10, 15], wheels: [[-0.14, 5], [0.2, 5]] },
+  tipper:    { segs: [[-0.5, 0.17, 13, '#6c757d'], [0.23, 0.5, 17, 'C']], glass: [0.28, 0.46, 11, 15], wheels: [[-0.34, 4], [-0.14, 4], [0.32, 4]] },
+  mixer:     { segs: [[-0.5, 0.15, 16, '#f1f1f1'], [0.23, 0.5, 17, 'C']], glass: [0.28, 0.46, 11, 15], wheels: [[-0.34, 4], [-0.14, 4], [0.32, 4]] },
+};
+const vSide = (s, color) => s === 'C' ? color : s === 'D' ? shade(color, -0.2) : s;
+function vehicleModel(type, color){
+  const T = VT[type], S = VS3[type], L = T.len, Wd = T.wid, y0 = -Wd / 2, y1 = Wd / 2, m = mb(), glass = col3('#bfe3ff');
+  const uvAt = (x, y) => [x / L + 0.5, y / Wd + 0.5], side = (s, x0, x1, h0, h1, c) => box(m, x0, x1, s > 0 ? y1 : y0 - 0.3, s > 0 ? y1 + 0.3 : y0, h0, h1, c);
+  box(m, -L / 2 + 2, L / 2 - 2, y0 + 2, y1 - 2, 2.5, 6, col3('#333333'));
+  for (const [a, b, h, c] of S.segs){ const x0 = a * L, x1 = b * L; box(m, x0, x1, y0, y1, 3, h, col3(vSide(c, color)), col3('#ffffff'), [uvAt(x0, y0), uvAt(x1, y0), uvAt(x1, y1), uvAt(x0, y1)]); }
+  const fx = S.segs[S.segs.length - 1][1] * L;
+  if (S.glass){ // windows down the sides, and a windscreen on the front of the part they're in
+    const [a, b, h0, h1] = S.glass, q = S.segs.find(q => q[0] <= a + 1e-6 && q[1] >= b - 1e-6) || S.segs[0];
+    for (const s of [-1, 1]) side(s, a * L, b * L, h0, h1, glass);
+    box(m, q[1] * L, q[1] * L + 0.3, y0 + 2, y1 - 2, q[2] - 5, q[2] - 1.5, glass);
+  }
+  if (S.band) for (const s of [-1, 1]) side(s, -L / 2 + 3, L / 2 - 3, S.band[1], S.band[2], col3(S.band[0]));
+  if (S.cheq){ const [h0, h1, xe] = S.cheq; for (let i = 0, x = -L / 2 + 2.5; x < xe * L - 2.5; i++, x += 3.4) for (const s of [-1, 1]) side(s, x, Math.min(x + 3.4, xe * L - 2.5), h0, h1, col3((i + (s > 0 ? 1 : 0)) % 2 ? '#1f9e4a' : '#ffd400')); }
+  box(m, fx, fx + 0.35, y0 + 1.2, y0 + 4, 5.5, 8, col3('#fff3b0', true)); box(m, fx, fx + 0.35, y1 - 4, y1 - 1.2, 5.5, 8, col3('#fff3b0', true));
+  box(m, -L / 2 - 0.35, -L / 2, y0 + 1.2, y0 + 3.5, 5.5, 7.5, col3('#ff4a4a', true)); box(m, -L / 2 - 0.35, -L / 2, y1 - 3.5, y1 - 1.2, 5.5, 7.5, col3('#ff4a4a', true));
+  for (const [xf, r] of S.wheels) for (const s of [-1, 1]){ const y = s * (Wd / 2 - 0.6); cyl(m, [xf * L, y - 1.6, r], [xf * L, y + 1.6, r], r, col3('#222222'), col3('#9a9a9a'), 12); }
+  return m;
+}
+function treeModel(t){
+  const m = mb(), r = t.r / U, dk = col3(t.dark), hi = col3(shade(t.dark, 0.25)), trunk = col3('#7a5230'), ch = r * 1.25 + 4;
+  cyl(m, [0, 0, 0], [0, 0, ch], Math.max(1.8, r * 0.16), trunk, trunk, 7);
+  ball(m, -r * 0.38, r * 0.12, ch, r * 0.72, dk, 0.9, 8, 5);
+  ball(m, r * 0.38, r * 0.16, ch - r * 0.05, r * 0.72, dk, 0.9, 8, 5);
+  ball(m, 0, -r * 0.3, ch + r * 0.25, r * 0.78, dk, 0.9, 8, 5);
+  ball(m, -r * 0.18, -r * 0.36, ch + r * 0.62, r * 0.42, hi, 0.9, 7, 4);
+  if (t.apples) for (const [ax, ay, az] of [[0.62, -0.25, 0.3], [-0.95, 0.2, 0.15], [0.25, 0.8, 0.1], [-0.15, -0.95, 0.55], [0.5, 0.35, 0.7]]) ball(m, ax * r, ay * r, ch + az * r, 2.3, col3('#e63946'), 1, 6, 4);
+  return m;
+}
+function houseModel(hs){
+  const m = mb(), r = hs.r / U, w = r * 2, d = r * 1.6, wh = r * 0.95, rh = r * 0.75, wall = col3('#f4ead8'), glass = col3('#bfe3ff');
+  box(m, -w / 2, w / 2, -d / 2, d / 2, 0, wh, wall);
+  gable(m, -w / 2 - 2, w / 2 + 2, -d / 2 - 2, d / 2 + 2, wh, wh + rh, col3(hs.roof), wall);
+  box(m, w * 0.18, w * 0.18 + 6, -d * 0.36, -d * 0.36 + 6, wh, wh + rh + 3, col3('#7a5a48'));
+  box(m, -3.5, 3.5, d / 2, d / 2 + 0.3, 0, wh * 0.62, col3('#8b5a3c'));
+  for (const x of [-w * 0.3, w * 0.3]) for (const [y0, y1] of [[-d / 2 - 0.3, -d / 2], [d / 2, d / 2 + 0.3]]) box(m, x - 3, x + 3, y0, y1, wh * 0.4, wh * 0.78, glass);
+  return m;
+}
+function stationModel(){
+  const m = mb(), wall = col3('#f4ead8'), glass = col3('#bfe3ff'), post = col3('#333333'), blue = col3('#2d6cdf');
+  box(m, -46, 46, -11, 13, 0, 8, col3('#d9d0c1'));
+  box(m, -46, 46, -11, -8.5, 8, 8.15, col3('#ffd23f'));
+  box(m, -22, 22, -2, 12, 8, 26, wall);
+  gable(m, -25, 25, -6, 16, 26, 37, col3('#d64545'), wall);
+  box(m, -3.5, 3.5, -2.3, -2, 8, 20, col3('#7a5a48'));
+  for (const x of [-15, -9, 9, 15]) box(m, x - 2.2, x + 2.2, -2.3, -2, 13, 20, glass);
+  box(m, 30, 42, 2, 7, 11, 12.2, blue); box(m, 30, 42, 7, 8.2, 12, 17, blue);
+  for (const x of [31, 41]) box(m, x - 0.6, x + 0.6, 2.5, 7.5, 8, 11, post);
+  for (const lx of [-40, 40]){
+    cyl(m, [lx, 6, 8], [lx, 6, 31], 0.9, post, post, 6);
+    box(m, lx - 2, lx + 2, 4, 8, 31, 35, col3('#ffe9a8', true)); box(m, lx - 2.6, lx + 2.6, 3.4, 8.6, 35, 36.3, post);
+  }
+  return m;
+}
+// the bank: stone, a slate roof, and a porch of white columns at the front (-y), with the gold coin over it
+function bankModel(){
+  const m = mb(), w = BANK_W, d = BANK_D, y0 = -d / 2 + 12, stone = col3('#e9e3d4'), white = col3('#ffffff'), porch = col3('#f4efe3');
+  box(m, -w / 2, w / 2, y0, d / 2, 0, 24, stone);
+  gable(m, -w / 2 - 1.5, w / 2 + 1.5, y0 - 1, d / 2 + 1.5, 24, 35, col3('#7d8aa3'), stone);
+  box(m, -w / 2 + 4, w / 2 - 4, -d / 2 - 5, -d / 2, 0, 1.5, stone);
+  box(m, -w / 2 + 1, w / 2 - 1, -d / 2, y0, 0, 3, porch);
+  for (let i = 0; i < 6; i++){ const x = -w / 2 + 6 + i * (w - 12) / 5; cyl(m, [x, -d / 2 + 2.5, 3], [x, -d / 2 + 2.5, 23], 2.2, white, white, 10); }
+  box(m, -w / 2 + 0.5, w / 2 - 0.5, -d / 2 - 1, y0, 23, 26.5, porch);
+  box(m, -5, 5, y0 - 0.3, y0, 3, 17, col3('#7a5a48'));
+  cyl(m, [0, -d / 2 - 1.3, 32], [0, -d / 2 + 0.2, 32], 6.5, col3('#c99a00'), col3('#ffd23f'), 18);
+  return m;
+}
+// the three stations (their fronts face -y, as the bank's does). Fire: red, two big doors and a hose tower.
+// Police: blue and white, a blue lamp over the door, and the pen at the side. Ambulance: white with green crosses.
+function stnModel(kind){
+  const m = mb(), w = STN_W, d = STN_D, y0 = -d / 2, y1 = d / 2, glass = col3('#bfe3ff'), white = col3('#ffffff');
+  if (kind === 'fire'){
+    const red = col3('#d94141'), dk = col3('#9c2a2a');
+    box(m, -w / 2, w / 2, y0, y1, 0, 24, red);
+    box(m, -w / 2 - 1.5, w / 2 + 1.5, y0 - 1.5, y1 + 1.5, 24, 26.5, dk);
+    for (const x of [-20.5, 1.5]){
+      box(m, x, x + 19, y0 - 0.4, y0, 0, 18, col3('#f1f1f1'));
+      box(m, x + 2, x + 17, y0 - 0.6, y0 - 0.4, 11, 14.5, glass);
+      for (const h of [4, 8]) box(m, x, x + 19, y0 - 0.55, y0 - 0.4, h, h + 0.4, col3('#c9c9c9'));
+    }
+    box(m, -w / 2 + 2, w / 2 - 2, y0 - 0.5, y0, 19.5, 22.5, col3('#ffd23f'));
+    box(m, w / 2 - 15.5, w / 2 - 3.5, y1 - 15, y1 - 3, 26.5, 46, red);
+    box(m, w / 2 - 17, w / 2 - 2, y1 - 16.5, y1 - 1.5, 46, 48.5, white);
+    cyl(m, [-7, y0 - 0.6, 30], [-7, y0 + 0.4, 30], 5.5, col3('#c99a00'), col3('#ffd23f'), 14); // the bell
+  } else if (kind === 'police'){
+    const bw = w - 17, x1 = -w / 2 + bw, xm = -w / 2 + bw / 2, wall = col3('#e8edf5'), blue = col3('#2b559c'), bar = col3('#4a4f57');
+    box(m, -w / 2, x1, y0, y1, 0, 22, wall);
+    box(m, -w / 2, x1, y0 - 0.3, y0, 9, 12, blue);
+    gable(m, -w / 2 - 1.5, x1 + 1.5, y0 - 1.5, y1 + 1.5, 22, 32, col3('#3b6fc4'), wall);
+    box(m, xm - 5, xm + 5, y0 - 0.5, y0, 0, 16, col3('#1d3a6e'));
+    for (const x of [xm - 11, xm + 11]) box(m, x - 3, x + 3, y0 - 0.5, y0, 13, 19, glass);
+    box(m, xm - 2, xm + 2, y0 - 2.5, y0 - 0.5, 17.5, 21, col3('#5aa0ff', true));
+    // the pen: a paved floor and bars all round
+    const px0 = w / 2 - 15, px1 = w / 2 - 1, py0 = y0 + 2, py1 = y1 - 8;
+    box(m, px0, px1, py0, py1, 0, 0.5, col3('#b9bcc2'));
+    for (let x = px0; x <= px1 + 0.01; x += 2.8) for (const y of [py0, py1]) cyl(m, [x, y, 0], [x, y, 17], 0.45, bar, bar, 5);
+    for (let y = py0 + 2.75; y < py1 - 1; y += 2.75) cyl(m, [px1, y, 0], [px1, y, 17], 0.45, bar, bar, 5);
+    for (const y of [py0, py1]) box(m, px0, px1, y - 0.6, y + 0.6, 16.5, 17.7, bar);
+    box(m, px1 - 0.6, px1 + 0.6, py0, py1, 16.5, 17.7, bar);
+  } else {
+    const wall = col3('#f6f8fa'), green = col3('#1f9e4a');
+    box(m, -w / 2, w / 2, y0, y1, 0, 22, wall);
+    box(m, -w / 2 - 1.5, w / 2 + 1.5, y0 - 1.5, y1 + 1.5, 22, 24, col3('#dde3e9'));
+    box(m, -w / 2, w / 2, y0 - 0.3, y0, 3, 6, green);
+    box(m, -11, 11, y0 - 0.5, y0, 0, 16, glass); box(m, -0.5, 0.5, y0 - 0.7, y0 - 0.5, 0, 16, green);
+    for (const x of [-18, 18]){ box(m, x - 4.5, x + 4.5, y0 - 0.5, y0, 12.5, 15.5, green); box(m, x - 1.5, x + 1.5, y0 - 0.5, y0, 9.5, 18.5, green); }
+    box(m, -10, 10, -3.4, 3.4, 24, 24.4, green); box(m, -3.4, 3.4, -10, 10, 24, 24.4, green);
+  }
+  return m;
+}
+function washModel(hl, hw, wallH, archH){
+  const m = mb(), blue = col3('#2d6cdf'), frame = col3('#1f4fb0'), white = col3('#f4f4f4'), wall = 7;
+  for (const s of [-1, 1]){
+    const y0 = s > 0 ? hw - wall : -hw, y1 = y0 + wall;
+    box(m, -hl, hl, y0, y1, 0, wallH, blue);
+    box(m, -hl + 4, hl - 4, s > 0 ? y1 : y0 - 0.3, s > 0 ? y1 + 0.3 : y0, wallH * 0.35, wallH * 0.65, col3('#9bd3ff'));
+    box(m, -hl, hl, s * (hw + 1) - 1.5, s * (hw + 1) + 1.5, archH - 4, archH, frame);
+  }
+  for (const x of [-hl, hl]){
+    for (const s of [-1, 1]) box(m, x - 3.5, x + 3.5, s * (hw + 1) - 3.5, s * (hw + 1) + 3.5, 0, archH, frame);
+    box(m, x - 3.5, x + 3.5, -hw - 4.5, hw + 4.5, archH - 7, archH, frame);
+    for (let y = -hw + 4; y < hw - 3; y += 8) box(m, x - 3.7, x + 3.7, y, y + 3, archH - 5, archH - 2, white);
+  }
+  box(m, -1.2, 1.2, -hw - 1, hw + 1, archH - 4, archH - 1.5, col3('#c9ccd1'));
+  return m;
+}
+function coneModel(){
+  const m = mb(), orange = col3('#ff6b1a');
+  box(m, -4, 4, -4, 4, 0, 1.2, col3('#333333'));
+  cyl(m, [0, 0, 1.2], [0, 0, 11], 3.6, orange, orange, 10, 0.5);
+  cyl(m, [0, 0, 4.5], [0, 0, 6.5], 2.85, col3('#ffffff'), false, 10, 2.45);
+  return m;
+}
+function dozerModel(){
+  const m = mb(), yel = col3('#f4b400'), dk = col3('#2b2b2b');
+  for (const s of [-1, 1]) box(m, -17, 12, s > 0 ? 5 : -12, s > 0 ? 12 : -5, 0, 7, dk);
+  box(m, -15, 12, -7.5, 7.5, 4, 13, yel);
+  box(m, -15, -1, -6.5, 6.5, 13, 24, col3('#bfe3ff')); box(m, -15.5, -0.5, -7, 7, 24, 25.5, col3('#e0a100'));
+  cyl(m, [5, -3, 13], [5, -3, 21], 1, dk, dk, 6);
+  for (const s of [-1, 1]) box(m, 4, 17, s * 9 - 1, s * 9 + 1, 4, 7, col3('#9c7000'));
+  box(m, 17, 20, -15, 15, 0.5, 12, col3('#d99a00')); box(m, 20, 20.4, -14, 14, 1, 11, col3('#f7c948'));
+  return m;
+}
+// the digger's top half (it turns on its tracks); the arm is drawn as beams
+function diggerModel(){
+  const m = mb(), yel = col3('#f4b400');
+  box(m, -14, 10, -11, 11, 6, 16, yel);
+  box(m, -16, -9, -10, 10, 6, 15, col3('#555555'));
+  box(m, 0, 9, -10, -1, 16, 26, col3('#bfe3ff')); box(m, -0.5, 9.5, -10.5, -0.5, 26, 27.5, yel);
+  return m;
+}
+function rollerModel(){
+  const m = mb(), yel = col3('#f4b400'), grey = col3('#8a8a8a'), dk = col3('#222222');
+  cyl(m, [10, -9, 5.5], [10, 9, 5.5], 5.5, grey, col3('#aaaaaa'), 14);
+  box(m, -12, 6, -7, 7, 3, 12, yel);
+  box(m, -10, -2, -5, 5, 12, 20, col3('#e0a100'));
+  for (const s of [-1, 1]) cyl(m, [-8, s * 6, 4], [-8, s * 9, 4], 4, dk, dk, 10);
+  return m;
+}
+// the crane's jib, at the top of the mast: a lattice reaching out J, and the counter-jib with its weight behind
+function jibModel(J){
+  const m = mb(), y = col3('#f4c20d'), CJ = J * 0.32, topH = x => 7 - 5 * Math.max(0, x) / J;
+  for (const s of [-1, 1]) cyl(m, [-CJ, s * 3, 0], [J, s * 3, 0], 0.7, y, y, 5);
+  cyl(m, [-CJ, 0, 7], [J, 0, topH(J)], 0.7, y, y, 5);
+  for (let x = -CJ, i = 0; x < J - 1; x += 6, i++){ const x2 = Math.min(J, x + 6); for (const s of [-1, 1]) cyl(m, [i % 2 ? x2 : x, s * 3, 0], [i % 2 ? x : x2, 0, topH(i % 2 ? x : x2)], 0.45, y, y, 4); }
+  box(m, -CJ - 2, -CJ + 10, -5, 5, -8, 3, col3('#777777'));
+  box(m, -1, 7, 3.5, 9, -9, 0, col3('#bfe3ff')); box(m, -1.3, 7.3, 3.2, 9.3, 0, 1, y);
+  cyl(m, [0, 0, 0], [0, 0, 16], 1, y, y, 6);
+  cyl(m, [0, 0, 16], [J * 0.7, 0, topH(J * 0.7)], 0.3, col3('#555555'), false, 4); cyl(m, [0, 0, 16], [-CJ, 0, 7], 0.3, col3('#555555'), false, 4);
+  box(m, J - 1.5, J + 1.5, -1.5, 1.5, 0, 3, col3('#ff4040', true));
+  return m;
+}
+// a lattice tower (the crane's mast)
+function lattice(m, x, y, h0, h1, s, col){
+  const k = s / 2, n = Math.max(2, Math.round((h1 - h0) / s)), C = [[-k, -k], [k, -k], [k, k], [-k, k]];
+  for (const [cx, cy] of C) cyl(m, [x + cx, y + cy, h0], [x + cx, y + cy, h1], 0.9, col, col, 5);
+  for (let i = 0; i < n; i++){
+    const ha = h0 + (h1 - h0) * i / n, hb = h0 + (h1 - h0) * (i + 1) / n;
+    for (let j = 0; j < 4; j++){ const A = C[j], B = C[(j + 1) % 4]; cyl(m, [x + A[0], y + A[1], hb], [x + B[0], y + B[1], hb], 0.5, col, col, 4); cyl(m, [x + A[0], y + A[1], ha], [x + B[0], y + B[1], hb], 0.45, col, col, 4); }
+  }
+}
+// the barrier's boom, from its pivot along x: white with red stripes
+function boomModel(){ const m = mb(); for (let x = 0, i = 0; x < 22; x += 3, i++) box(m, x, x + 3, -0.9, 0.9, -0.9, 0.9, col3(i % 2 ? '#e63946' : '#ffffff')); return m; }
+const unitModels = {
+  beam: () => { const m = mb(); box(m, 0, 1, -0.5, 0.5, -0.5, 0.5, col3('#ffffff')); return m; },  // from 0 to 1 along x
+  cube: () => { const m = mb(); box(m, -0.5, 0.5, -0.5, 0.5, 0, 1, col3('#ffffff')); return m; },  // standing on 0
+  lamp: () => { const m = mb(); box(m, -0.5, 0.5, -0.5, 0.5, -0.5, 0.5, col3('#ffffff', true)); return m; },
+  hemi: () => { const m = mb(); ball(m, 0, 0, 0, 1, col3('#ffffff'), 1, 14, 5, true); return m; },
+  roof: () => { const m = mb(); gable(m, -0.5, 0.5, -0.5, 0.5, 0, 1, col3('#ffffff')); return m; },
+  brush: () => { const m = mb(); cyl(m, [0, 0, 0], [0, 0, 1], 1, [col3('#e63946'), col3('#ffd6d9')], col3('#e63946'), 8); return m; },
+};
+
+/* ---------- the world: everything that doesn't move, in one model (made again when the map is) ---------- */
+// a tube along a path: the railway tunnel, and the road tunnels where the side roads leave the map. inner/outer are
+// matching profiles [across, up], from the right over the top to the left; the ends get a stone arch round the hole.
+function tube(m, path, inner, outer, cOut, cIn, cEnd, closeEnd){
+  const band = inner.map((q, k) => { const o = outer[k], d = Math.hypot(o[0] - q[0], o[1] - q[1]) || 1, f = Math.min(1, 9 * U / d); return [q[0] + (o[0] - q[0]) * f, q[1] + (o[1] - q[1]) * f]; });
+  const P3 = (p, q) => [p.x - Math.sin(p.a) * q[0], p.y + Math.cos(p.a) * q[0], q[1]];
+  for (let i = 0; i < path.length - 1; i++){
+    const p0 = path[i], p1 = path[i + 1];
+    for (const [prof, sgn] of [[outer, 1], [inner, -1]]) for (let k = 0; k < prof.length - 1; k++){
+      const dy = prof[k + 1][0] - prof[k][0], dh = prof[k + 1][1] - prof[k][1], l = Math.hypot(dy, dh) || 1, na = sgn * dh / l;
+      const n = [-Math.sin(p0.a) * na, Math.cos(p0.a) * na, -sgn * dy / l];
+      quad(m, P3(p0, prof[k]), P3(p1, prof[k]), P3(p1, prof[k + 1]), P3(p0, prof[k + 1]), n, sgn > 0 ? cOut(k / (prof.length - 2)) : cIn);
+    }
+  }
+  for (const [p, dir] of [[path[0], -1], [path[path.length - 1], 1]]){
+    const n = [Math.cos(p.a) * dir, Math.sin(p.a) * dir, 0];
+    for (let k = 0; k < inner.length - 1; k++){
+      quad(m, P3(p, inner[k]), P3(p, inner[k + 1]), P3(p, band[k + 1]), P3(p, band[k]), n, cEnd);
+      quad(m, P3(p, band[k]), P3(p, band[k + 1]), P3(p, outer[k + 1]), P3(p, outer[k]), n, HILL[0]);
+    }
+    if (dir > 0 && closeEnd) for (let k = 0; k < inner.length - 1; k++) tri(m, P3(p, inner[k]), P3(p, inner[k + 1]), P3(p, [0, inner[0][1]]), n, cIn);
+  }
+}
+// an arch (straight walls, then a half ellipse) and a hill over it, as matching profiles (in pixels)
+function arch(ri, hw, ha, ro, ho){
+  const inner = [[ri, 0], [ri, hw / 2], [ri, hw]];
+  for (let k = 1; k < 10; k++){ const f = k / 10 * Math.PI; inner.push([ri * Math.cos(f), hw + ha * Math.sin(f)]); }
+  inner.push([-ri, hw], [-ri, hw / 2], [-ri, 0]);
+  const outer = inner.map(([y, h]) => { const t = Math.atan2(h, y); return [ro * Math.cos(t), ho * Math.sin(t)]; });
+  return { inner, outer };
+}
+const HILL = ['#4c9a3c', '#5db34a', '#6fc25a'].map(c => col3(c)), hillCol = k => HILL[k < 0.18 || k > 0.82 ? 0 : k < 0.34 || k > 0.66 ? 1 : 2];
+function barriers(){
+  const { o, p } = spur, out = [];
+  for (const side of [1, -1]){
+    const L = side > 0 ? { x: -o.y, y: o.x } : { x: o.y, y: -o.x };
+    out.push({ x: p.x + o.x * side * BAR_R * U + L.x * (ROAD_HALF + 3) * U, y: p.y + o.y * side * BAR_R * U + L.y * (ROAD_HALF + 3) * U, a: Math.atan2(-L.y, -L.x) });
+  }
+  return out;
+}
+function buildWorld(){
+  const m = mb(), u = U, big = Math.max(W, H), T = TH * u;
+  // grass all round the map, and hills far off
+  quad(m, [-6 * big, -6 * big, -0.6 * u], [7 * big, -6 * big, -0.6 * u], [7 * big, 7 * big, -0.6 * u], [-6 * big, 7 * big, -0.6 * u], [0, 0, 1], col3('#88c866'));
+  const rnd = mulberry(11);
+  for (let i = 0; i < 18; i++){
+    const a = (i + rnd() * 0.5) / 18 * TAU, d = big * (1.55 + rnd() * 0.8), r = big * (0.3 + rnd() * 0.3);
+    ball(m, W / 2 + Math.cos(a) * d, H / 2 + Math.sin(a) * d, -1 * u, r, HILL[i % 3], 0.4, 14, 4, true);
+  }
+  // the wooden track, standing up off the grass, with its grooves and the joints between pieces
+  const sd = s => { const d = mod(s - spur.S); return Math.min(d, TL - d); }, nearX = s => spur && sd(s) < (ROAD_HALF + 0.5) * u;
+  const offs = [-14, -8.5, -4.5, 4.5, 8.5, 14], tc = ['#dcab70', '#a66f38', '#e5b981', '#a66f38', '#dcab70'].map(c => col3(c)), side = col3('#c4925a');
+  const Q = (p, o, h) => [p.x - Math.sin(p.a) * o * u, p.y + Math.cos(p.a) * o * u, h];
+  for (let i = 0; i < TN; i += 2){
+    const s0 = i * STEP, s1 = (i + 2) * STEP;
+    if (nearX((s0 + s1) / 2)) continue;
+    const p0 = at(s0), p1 = at(s1);
+    for (let k = 0; k < 5; k++) quad(m, Q(p0, offs[k], T), Q(p1, offs[k], T), Q(p1, offs[k + 1], T), Q(p0, offs[k + 1], T), [0, 0, 1], tc[k]);
+    for (const o of [-14, 14]) quad(m, Q(p0, o, 0), Q(p1, o, 0), Q(p1, o, T), Q(p0, o, T), [-Math.sin(p0.a) * Math.sign(o), Math.cos(p0.a) * Math.sign(o), 0], side);
+  }
+  const pieces = Math.max(8, Math.round(TL / (92 * u)));
+  for (let k = 0; k < pieces; k++){
+    const s = k * TL / pieces; if (nearX(s)) continue;
+    const a = at(s - 0.8 * u), b = at(s + 0.8 * u), h = T + 0.05 * u;
+    quad(m, Q(a, -14, h), Q(b, -14, h), Q(b, 14, h), Q(a, 14, h), [0, 0, 1], col3('#8a5a2e'));
+  }
+  // the level crossing: a deck over the rails with ramps up to it, and the barrier posts
+  if (spur){
+    const d = mb(), g = col3('#6e737b'), hw = ROAD_HALF;
+    box(d, -hw, hw, -15, 15, 0, TH, g);
+    for (const s of [-1, 1]) quad(d, [-hw, s * 15, TH], [hw, s * 15, TH], [hw, s * 25, 0], [-hw, s * 25, 0], [0, s * TH / 10, 1], g);
+    for (const y of [-6.5, 6.5]) box(d, -hw, hw, y - 1.5, y + 1.5, TH, TH + 0.08, col3('#2e2e33'));
+    for (let k = -3; k <= 3; k++) for (const y of [-15, 12]) box(d, k * 5 - 1, k * 5 + 1, y, y + 3, TH, TH + 0.1, col3('#ffffff'));
+    place(m, d, spur.p.x, spur.p.y, 0, spur.p.a, u);
+    const post = mb(), dk = col3('#333333');
+    cyl(post, [0, 0, 0], [0, 0, 16], 1.6, dk, dk, 8); box(post, -2.5, 2.5, -4.5, 4.5, 15, 20, dk);
+    for (const b of barriers()) place(m, post, b.x, b.y, 0, b.a, u);
+  }
+  // the railway tunnel, and road tunnels where the side roads leave the map (the vehicles come and go inside them)
+  const stone = col3('#9a8e84'), inside = col3('#2a211c');
+  if (tunnel){
+    const span = mod(tunnel.s1 - tunnel.s0), path = [];
+    for (let d = -6 * u; d < span + 6 * u; d += 6 * u) path.push(at(tunnel.s0 + d));
+    path.push(at(tunnel.s0 + span + 6 * u));
+    const A = arch(TUN.RI * u, TUN.HW * u, TUN.HA * u, TUN.RO * u, TUN.HO * u);
+    tube(m, path, A.inner, A.outer, hillCol, inside, stone, false);
+    const mid = at(tunnel.s0 + span / 2);
+    ball(m, mid.x - 6 * u, mid.y - 6 * u, TUN.HO * u - 6 * u, 14 * u, HILL[2], 0.6, 10, 4, true);
+    ball(m, mid.x + 10 * u, mid.y + 8 * u, TUN.HO * u - 4 * u, 3 * u, col3('#e63946'), 1, 6, 4);
+    ball(m, mid.x - 14 * u, mid.y + 14 * u, TUN.HO * u - 6 * u, 3 * u, col3('#ffd23f'), 1, 6, 4);
+  }
+  for (const jn of sides){
+    const out = Math.atan2(-Math.cos(jn.a), Math.sin(jn.a)), path = [];
+    for (let n = 44; n <= 180; n += 17){ const p = jn.P(0, n); path.push({ x: p.x, y: p.y, a: out }); }
+    const A = arch(23 * u, 22 * u, 12 * u, 62 * u, 58 * u);
+    tube(m, path, A.inner, A.outer, hillCol, inside, stone, true);
+    const r0 = jn.P(-ROAD_HALF, 40), r1 = jn.P(ROAD_HALF, 40), r2 = jn.P(ROAD_HALF, 180), r3 = jn.P(-ROAD_HALF, 180);
+    quad(m, [r0.x, r0.y, -0.3 * u], [r1.x, r1.y, -0.3 * u], [r2.x, r2.y, -0.3 * u], [r3.x, r3.y, -0.3 * u], [0, 0, 1], col3('#6e737b'));
+  }
+  place(m, stationModel(), station.cx, station.cy, 0, station.a, u);
+  for (const t of trees) place(m, treeModel(t), t.x, t.y, 0, 0, u);
+  for (const h of houses) place(m, houseModel(h), h.x, h.y, 0, h.rot, u);
+  if (bank) place(m, bankModel(), bank.x, bank.y, 0, bank.a, u);
+  for (const st of stations) place(m, stnModel(st.kind), st.x, st.y, 0, st.a, u);
+  if (carWash) place(m, washModel(36, ROAD_HALF + 9, 14, 40), carWash.x, carWash.y, 0, carWash.a, u);
+  if (trainWash) place(m, washModel(52, 26, 16, 60), trainWash.x, trainWash.y, 0, trainWash.a, u);
+  if (works){ const cone = coneModel(); for (let t = -60; t <= 60; t += 20){ const p = works.toW(t * u, (ROAD_HALF + 5) * u); place(m, cone, p.x, p.y, 0, works.a, u); } }
+  if (site) place(m, siteModel(), site.p.x, site.p.y, 0, site.theta, u);
+  return m;
+}
+// the building site, in its own frame (u, w) in U: the fence, the foundation, the pallet of blocks, the office, the
+// spoil heap, the digger's tracks, the crane's mast and the job signs' posts
+function siteModel(){
+  const m = mb(), u = U, S = v => v / u, { u0, u1, wn, wp } = site, grey = col3('#555555');
+  const gap = (ROAD_HALF + 3) * u, pts = [[u0, gap], [u0, wp], [u1, wp], [u1, -wn], [u0, -wn], [u0, -gap]].map(([a, b]) => [S(a), S(b)]);
+  for (let i = 0; i < pts.length - 1; i++){
+    const [a0, b0] = pts[i], [a1, b1] = pts[i + 1], L = Math.hypot(a1 - a0, b1 - b0), n = Math.max(1, Math.round(L / 6));
+    for (let k = 0; k < n; k++){
+      const f0 = k / n, f1 = (k + 1) / n, x0 = a0 + (a1 - a0) * f0, y0 = b0 + (b1 - b0) * f0, x1 = a0 + (a1 - a0) * f1, y1 = b0 + (b1 - b0) * f1;
+      box(m, Math.min(x0, x1) - 0.4, Math.max(x0, x1) + 0.4, Math.min(y0, y1) - 0.4, Math.max(y0, y1) + 0.4, 7, 11, col3(k % 2 ? '#f26b1d' : '#f4f4f4'));
+    }
+    for (let k = 0; k <= Math.max(1, Math.round(L / 24)); k++){ const f = k / Math.max(1, Math.round(L / 24)); cyl(m, [a0 + (a1 - a0) * f, b0 + (b1 - b0) * f, 0], [a0 + (a1 - a0) * f, b0 + (b1 - b0) * f, 13], 1.2, grey, grey, 6); }
+  }
+  if (site.bld){ const b = site.bld; box(m, S(b.u0), S(b.u1), S(b.w0), S(b.w1), 0, 2, col3('#b8b4ad')); }
+  if (site.stack){
+    const s = site.stack, su = S(s.u), sw = S(s.w);
+    box(m, su - 13, su + 13, sw - 13, sw + 13, 0, 3, col3('#9c6a3a'));
+    [[-5, -5, 0], [5, -5, 1], [-5, 5, 2], [5, 5, 3]].forEach(([du, dw, i]) => box(m, su + du - 4.5, su + du + 4.5, sw + dw - 4.5, sw + dw + 4.5, 3, 12, col3(TOY[i])));
+    box(m, su - 4.5, su + 4.5, sw - 4.5, sw + 4.5, 12, 21, col3(TOY[4]));
+  }
+  if (site.cabin){
+    const k = site.cabin, ku = S(k.u), kw = S(k.w);
+    box(m, ku - 16, ku + 16, kw - 10, kw + 10, 0, 17, col3('#2d6cdf'));
+    box(m, ku - 17, ku + 17, kw - 11, kw + 11, 17, 19, col3('#5b8def'));
+    for (const s of [-1, 1]) box(m, ku - 12, ku + 12, s > 0 ? kw + 10 : kw - 10.3, s > 0 ? kw + 10.3 : kw - 10, 9, 14, col3('#bfe3ff'));
+  }
+  if (ex){
+    const hp = ex.heap, dirt = col3('#8b5a2b');
+    cyl(m, [S(hp.u), S(hp.w), 0], [S(hp.u), S(hp.w), 10], 13, dirt, dirt, 12, 2);
+    for (const s of [-1, 1]) box(m, S(ex.u) - 18, S(ex.u) + 18, S(ex.w) + (s > 0 ? 5 : -13), S(ex.w) + (s > 0 ? 13 : -5), 0, 6, col3('#2b2b2b'));
+  }
+  if (crane){ const cu = S(crane.cu), cw = S(crane.cw); box(m, cu - 9, cu + 9, cw - 9, cw + 9, 0, 3, col3('#b8b4ad')); lattice(m, cu, cw, 3, MH, 10, col3('#e9b10a')); }
+  for (const sg of signs) cyl(m, [S(sg.u), S(sg.w), 0], [S(sg.u), S(sg.w), 22], 1.1, grey, grey, 6);
+  return m;
+}
+
+/* ---------- the renderer ---------- */
+const VS = `
+attribute vec3 aP; attribute vec3 aN; attribute vec4 aC; attribute vec2 aT;
+uniform mat4 uVP; uniform mat4 uM; uniform vec4 uUV; uniform vec3 uEye;
+varying vec3 vN; varying vec4 vC; varying vec2 vT; varying vec3 vR;
+void main(){
+  vec4 w = uM * vec4(aP, 1.0);
+  gl_Position = uVP * w;
+  vN = (uM * vec4(aN, 0.0)).xyz; vC = aC;
+  vT = aT.x < 0.0 ? aT : aT * uUV.xy + uUV.zw;
+  vR = w.xyz - uEye; // (the distance for the haze is taken per pixel: the grass round the map is one huge square)
+}`;
+const FS = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform sampler2D uTex; uniform vec3 uSun; uniform float uNight; uniform float uCut; uniform vec3 uFog; uniform vec2 uFogR; uniform vec4 uTint;
+varying vec3 vN; varying vec4 vC; varying vec2 vT; varying vec3 vR;
+void main(){
+  float vD = length(vR);
+  vec4 t = texture2D(uTex, max(vT, vec2(0.0)));
+  if (vT.x < 0.0) t = vec4(1.0);
+  float glow = step(1.5, vC.a), a = min(vC.a, 1.0) * t.a * uTint.a;
+  if (a < uCut) discard;
+  vec3 c = vC.rgb * t.rgb * uTint.rgb;
+  float nl = length(vN), lit = nl < 0.01 ? 1.0 : 0.62 + 0.48 * max(dot(vN / nl, uSun), 0.0);
+  c *= mix(lit, 1.0, glow);
+  c *= mix(vec3(1.0), vec3(0.38, 0.44, 0.7), uNight * (1.0 - glow));
+  c = mix(c, uFog, clamp((vD - uFogR.x) / (uFogR.y - uFogR.x), 0.0, 1.0));
+  gl_FragColor = vec4(c, a);
+}`;
+function ensure(){ if (gx === null) gx = init() || false; return !!gx; }
+function init(){
+  try {
+    const opt = { antialias: true, alpha: false, depth: true };
+    const gl = cv3.getContext('webgl2', opt) || cv3.getContext('webgl', opt);
+    if (!gl || typeof gl.getParameter !== 'function' || typeof gl.getParameter(gl.VERSION) !== 'string') return null;
+    const sh = (t, src) => { const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+    const p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, FS));
+    ['aP', 'aN', 'aC', 'aT'].forEach((n, i) => gl.bindAttribLocation(p, i, n));
+    gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    gl.useProgram(p);
+    const u = {}; for (const n of ['uVP', 'uM', 'uUV', 'uEye', 'uTex', 'uSun', 'uNight', 'uCut', 'uFog', 'uFogR', 'uTint']) u[n] = gl.getUniformLocation(p, n);
+    for (let i = 0; i < 4; i++) gl.enableVertexAttribArray(i);
+    const r = { gl, u, gl2: typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext, models: new Map(), bound: null, right: [1, 0, 0], up: [0, 1, 0], frame: 0,
+      aniso: gl.getExtension('EXT_texture_filter_anisotropic') || gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic') };
+    r.dynBuf = gl.createBuffer();
+    r.sa = atlas(1024, 1024); r.da = atlas(512, 1024);
+    r.sa.tex = gl.createTexture(); r.da.tex = gl.createTexture(); r.groundTex = gl.createTexture();
+    gx = r; // (the batches and textures below need it)
+    r.cut = batch(1500); r.signB = batch(8); r.trans = batch(2500); r.glow = batch(1200);
+    return r;
+  } catch (e){ console.warn('no 3D view:', e); return null; }
+}
+cv3.addEventListener('webglcontextlost', e => { e.preventDefault(); gx = null; });
+cv3.addEventListener('webglcontextrestored', () => { gx = null; cam.dirty = true; });
+function upload(m){ const gl = gx.gl, b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(m.v), gl.STATIC_DRAW); gx.bound = null; return { b, n: m.v.length / 12 }; }
+function model(key, make){ let o = gx.models.get(key); if (!o){ o = upload(make()); gx.models.set(key, o); } return o; }
+function bindBuf(b){
+  if (gx.bound === b) return;
+  const gl = gx.gl; gl.bindBuffer(gl.ARRAY_BUFFER, b);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 48, 0); gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 48, 12);
+  gl.vertexAttribPointer(2, 4, gl.FLOAT, false, 48, 24); gl.vertexAttribPointer(3, 2, gl.FLOAT, false, 48, 40);
+  gx.bound = b;
+}
+const ID = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]), WHITE = [1, 1, 1, 1], UV1 = [1, 1, 0, 0];
+function drawM(o, M, tint, uv){
+  const gl = gx.gl, u = gx.u;
+  gl.uniformMatrix4fv(u.uM, false, M || ID); gl.uniform4fv(u.uTint, tint || WHITE); gl.uniform4fv(u.uUV, uv || UV1);
+  bindBuf(o.b); gl.drawArrays(gl.TRIANGLES, 0, o.n);
+}
+const tint = (s, a) => { const c = col3(s); return [c[0], c[1], c[2], a === undefined ? 1 : a]; };
+function setTex(t, src, mip){
+  const gl = gx.gl; gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+  const pow2 = x => (x & (x - 1)) === 0, can = mip && (gx.gl2 || (pow2(src.width) && pow2(src.height)));
+  if (can) gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, can ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  if (can && gx.aniso) gl.texParameterf(gl.TEXTURE_2D, gx.aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(gx.aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+}
+// a batch of flat four-cornered pieces made each frame: sprites, shadows, smoke, glows
+function batch(n){ return { a: new Float32Array(n * 72), n: 0 }; }
+function bq(B, p0, p1, p2, p3, col, u0, v0, u1, v1){ // corners [x, height, y] with p0 at (u0, v0) and p2 at (u1, v1)
+  if ((B.n + 1) * 72 > B.a.length) return;
+  const a = B.a; let o = B.n * 72;
+  for (const [p, u, v] of [[p0, u0, v0], [p1, u1, v0], [p2, u1, v1], [p0, u0, v0], [p2, u1, v1], [p3, u0, v1]]){
+    a[o++] = p[0]; a[o++] = p[1]; a[o++] = p[2]; a[o++] = 0; a[o++] = 0; a[o++] = 0; a[o++] = col[0]; a[o++] = col[1]; a[o++] = col[2]; a[o++] = col[3]; a[o++] = u; a[o++] = v;
+  }
+  B.n++;
+}
+function flush(B){
+  if (!B.n) return;
+  const gl = gx.gl; gl.bindBuffer(gl.ARRAY_BUFFER, gx.dynBuf); gx.bound = null;
+  gl.bufferData(gl.ARRAY_BUFFER, B.a.subarray(0, B.n * 72), gl.DYNAMIC_DRAW);
+  bindBuf(gx.dynBuf);
+  gl.uniformMatrix4fv(gx.u.uM, false, ID); gl.uniform4fv(gx.u.uTint, WHITE); gl.uniform4fv(gx.u.uUV, UV1);
+  gl.drawArrays(gl.TRIANGLES, 0, B.n * 6); B.n = 0;
+}
+// a sprite facing the camera, its middle at (x, y) and height h; uv: [u0, v0, u1, v1]
+function sprite(B, x, h, y, size, uv, col, flip){
+  const r = gx.right, up = gx.up, s = size / 2;
+  const rx = r[0] * s, rh = r[1] * s, ry = r[2] * s, ux = up[0] * s, uh = up[1] * s, uy = up[2] * s;
+  bq(B, [x - rx + ux, h - rh + uh, y - ry + uy], [x + rx + ux, h + rh + uh, y + ry + uy], [x + rx - ux, h + rh - uh, y + ry - uy], [x - rx - ux, h - rh - uh, y - ry - uy],
+    col || WHITE, flip ? uv[2] : uv[0], uv[1], flip ? uv[0] : uv[2], uv[3]);
+}
+// a flat piece lying on the ground (shadows, light on the ground), along a
+function flat(B, x, y, h, a, hl, hw, col, uv){
+  const c = Math.cos(a), s = Math.sin(a), P = (l, w) => [x + c * l - s * w, h, y + s * l + c * w];
+  bq(B, P(-hl, -hw), P(hl, -hw), P(hl, hw), P(-hl, hw), col, uv[0], uv[1], uv[2], uv[3]);
+}
+// the sprite pictures: emoji and the like painted once into a big texture, in 128-pixel squares
+const CELL = 128, EMS = CELL / 92; // (an emoji painted 92 pixels high fills a square: so a sprite is EMS times its font size)
+function atlas(w, h){ const c = document.createElement('canvas'); c.width = w; c.height = h; return { cv: c, c: c.getContext('2d'), map: new Map(), n: 0, dirty: true, tex: null }; }
+function cell(key){
+  const A = gx.sa, per = 1024 / CELL;
+  let i = A.map.get(key);
+  if (i === undefined){
+    if (A.n >= per * per){ A.map.clear(); A.n = 0; A.c.clearRect(0, 0, 1024, 1024); }
+    i = A.n++; A.map.set(key, i); A.dirty = true;
+    const c = A.c, x = (i % per) * CELL, y = Math.floor(i / per) * CELL;
+    c.save(); c.translate(x + CELL / 2, y + CELL / 2); c.textAlign = 'center'; c.textBaseline = 'middle';
+    if (key === 'disc'){ c.fillStyle = '#fff'; circle(c, 0, 0, CELL * 0.46); c.fill(); }
+    else if (key === 'soft'){ const g = c.createRadialGradient(0, 0, 0, 0, 0, CELL * 0.48); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.4, 'rgba(255,255,255,0.6)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = g; c.fillRect(-CELL / 2, -CELL / 2, CELL, CELL); }
+    else if (key === 'bubble'){ c.fillStyle = 'rgba(215,240,255,0.5)'; circle(c, 0, 0, CELL * 0.42); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 7; c.stroke(); c.fillStyle = '#fff'; circle(c, -CELL * 0.15, -CELL * 0.15, CELL * 0.1); c.fill(); }
+    else if (key === 'robber' || key === 'robberUp') drawRobber(c, 0, 4, 30, key === 'robberUp', 0);
+    else if (key === 'plaster') drawPlaster(c, 0, 0, 30);
+    else if (key.startsWith('note:')){ c.font = 'bold 92px system-ui,sans-serif'; c.lineWidth = 10; c.strokeStyle = 'rgba(0,0,0,0.3)'; c.strokeText(key.slice(5), 0, 4); c.fillStyle = '#fff'; c.fillText(key.slice(5), 0, 4); }
+    else { c.font = `92px ${EF}`; c.fillStyle = '#000'; c.fillText(key, 0, 6); }
+    c.restore();
+  }
+  const x = (i % per) * CELL, y = Math.floor(i / per) * CELL, p = 2;
+  return [(x + p) / 1024, (y + p) / 1024, (x + CELL - p) / 1024, (y + CELL - p) / 1024];
+}
+// the moving pictures, painted again every other frame: each vehicle's roof (its map art) and the job signs' faces
+function paintDyn(time){
+  const A = gx.da, c = A.c;
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, 512, 1024);
+  vehicles.forEach((v, i) => {
+    if (i >= 60) return;
+    const T = VT[v.type], L = T.len * U, Wd = T.wid * U, s = Math.min(126 / L, 62 / Wd), x = (i % 4) * 128, y = Math.floor(i / 4) * 64;
+    c.setTransform(s, 0, 0, s, x + 1 + L * s / 2, y + 1 + Wd * s / 2);
+    c.fillStyle = vSide(VS3[v.type].segs[0][3], v.color); c.fillRect(-L / 2, -Wd / 2, L, Wd);
+    noTyres = true; try { VDRAW[v.type](c, L, Wd, v); } finally { noTyres = false; }
+    if (v.called){ c.fillStyle = blink() ? '#ffb000' : '#8a5a00'; circle(c, L / 2 - L * 0.135, 0, 2.8 * U); c.fill(); }
+    v.uv3 = [L * s / 512, Wd * s / 1024, (x + 1) / 512, (y + 1) / 1024];
+  });
+  signs.forEach((sg, i) => {
+    const x = (i % 4) * 128, y = 960, s = 31 / ((SIGN_R + 6) * U);
+    c.setTransform(s, 0, 0, s, x + 32, y + 32); c.textAlign = 'center'; c.textBaseline = 'middle';
+    signFace(c, sg, signLit(sg.kind), time);
+    sg.uv3 = [x / 512, y / 1024, (x + 64) / 512, (y + 64) / 1024];
+  });
+  setTex(A.tex, A.cv, true);
+}
+function rebuild(){
+  const gl = gx.gl;
+  for (const k of ['world', 'ground', 'jib']) if (gx[k]){ gl.deleteBuffer(gx[k].b); gx[k] = null; }
+  gx.bound = null;
+  gx.world = upload(buildWorld());
+  const g = mb(); quad(g, [0, 0, 0], [W, 0, 0], [W, H, 0], [0, H, 0], [0, 0, 1], col3('#ffffff'), [[0, 0], [1, 0], [1, 1], [0, 1]]); gx.ground = upload(g);
+  if (crane) gx.jib = upload(jibModel(crane.J / U));
+  const bg3 = document.createElement('canvas'); drawBG(bg3, Math.min(2, 4096 / Math.max(W, H)), true); setTex(gx.groundTex, bg3, true);
+  cam.dirty = false;
+}
+
+/* ---------- drawing a frame ---------- */
+let lastT = 0;
+function draw3d(time){
+  if (!on() || !ensure()) return;
+  const gl = gx.gl, u = gx.u, dt = clamp(time - lastT, 0, 0.1); lastT = time;
+  const D3 = Math.min(DPR, 1.5), cw = Math.round(W * D3), ch = Math.round(H * D3);
+  if (cv3.width !== cw || cv3.height !== ch){ cv3.width = cw; cv3.height = ch; }
+  if (cam.dirty) rebuild();
+  cv3.style.opacity = cam.op;
+  const P = cam.pose || mapPose(), big = Math.max(W, H), n3 = night;
+  const sky = [0.66, 0.85, 1].map((c, i) => lerp(c, [0.07, 0.1, 0.25][i], n3));
+  gl.viewport(0, 0, cw, ch);
+  gl.clearColor(sky[0], sky[1], sky[2], 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.depthMask(true); gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE);
+  perspM(PM, P.fov, W / H, (cam.mode === 2 && cam.k > 0.5 ? 0.6 : 2) * U, big * 9 + P.h * 2); viewM(VM, P); mMul(VP, PM, VM);
+  gl.uniformMatrix4fv(u.uVP, false, VP); gl.uniform3f(u.uEye, P.x, P.h, P.y); gl.uniform3fv(u.uSun, SUN); gl.uniform1f(u.uNight, n3);
+  const fog0 = big * 0.9 + P.h * 2; gl.uniform3fv(u.uFog, sky); gl.uniform2f(u.uFogR, fog0, fog0 + big * 2.2); gl.uniform1f(u.uCut, 0.5);
+  gx.right = [VM[0], VM[4], VM[8]]; gx.up = [VM[1], VM[5], VM[9]];
+  gl.activeTexture(gl.TEXTURE0); gl.uniform1i(u.uTex, 0);
+  if (gx.frame++ % 2 === 0) paintDyn(time);
+  gl.bindTexture(gl.TEXTURE_2D, gx.groundTex); drawM(gx.ground); drawM(gx.world);
+  const B = gx.cut, TR = gx.trans, GL_ = gx.glow, T = TH * U, shadowUV = cell('soft'), shade_ = [0, 0, 0, 0.22];
+  const glows = n3 > 0.01, glowAt = (x, h, y, r, rgb, a) => { if (glows) sprite(GL_, x, h, y, r * 2, shadowUV, [rgb[0] * a * n3, rgb[1] * a * n3, rgb[2] * a * n3, 2]); };
+  const em = (x, h, y, ch_, size, col) => sprite(B, x, h, y, size * EMS, cell(ch_), col);
+
+  // trains
+  for (const tr of trains){
+    const G = tr.geo; if (!G.length) continue;
+    const sc = 1 + Math.sin(tr.bounce * 22) * tr.bounce * 0.22, s = U * sc;
+    const dh = mod(tr.head - (tr.h3 === undefined ? tr.head : tr.h3)); tr.h3 = tr.head; tr.od3 = (tr.od3 || 0) + (dh > TL / 2 ? dh - TL : dh);
+    const moving = Math.min(1, (tr.drag ? tr.dragV : tr.v) / (40 * U));
+    for (let k = 0; k < G.length; k++){
+      const g = G[k], car = g.car, ca = Math.cos(g.a), sa = Math.sin(g.a);
+      mPlace(MC, g.x, g.y, T, g.a, s, s, s);
+      flat(TR, g.x + 3 * U, g.y + 4 * U, T + 0.3 * U, g.a, g.len / 2 + 3 * U, (WID / 2 + 4) * U, shade_, shadowUV);
+      const wh = car.e ? [[-0.32 * ENG.L, 5.5], [0, 5.5], [0.32 * ENG.L, 5.5]] : [[-13.4, 4.5], [13.4, 4.5]];
+      const wm = model(car.e ? 'wheel' + tr.color : 'wheel', () => wheelModel(car.e ? tr.color : '#555555'));
+      for (const [wx, r] of wh) for (const wy of [-13, 13]){ mTip(ML, wx, wy, r, -(tr.od3 / U) / r, r, 3, r); drawM(wm, mMul(MO, MC, ML)); }
+      if (car.e){
+        drawM(model('eng' + tr.color, () => engineModel(tr.color)), MC);
+        // the driver: turns his head to look at you and waves when the engine toots, and otherwise looks about a bit
+        const { dx, dy, floor } = ENG, wave = tr.wave || 0, wk = wave > 0 ? clamp(Math.min(wave / 0.25, (1.6 - wave) / 0.2), 0, 1) : 0;
+        const rx = P.x - (g.x + (ca * dx - sa * dy) * s), ry = P.y - (g.y + (sa * dx + ca * dy) * s);
+        const look = wave > 0 ? clamp(angDiff(Math.atan2(ry, rx), g.a), -2, 2) : 0.35 * Math.sin(time * 0.5 + tr.pitch * 9);
+        tr.hy = lerpAng(tr.hy || 0, look, 1 - Math.exp(-dt * 6));
+        drawM(model('drvBody', driverBody), mMul(MO, MC, mPlace(ML, dx, dy, floor, 0, 1, 1, 1)));
+        drawM(model('drvHead', driverHead), mMul(MO, MC, mPlace(ML, dx, dy, floor + 20, tr.hy, 1, 1, 1)));
+        // he waves out of his window, or (seen from in the cab) with the hand nearer you, off the regulator
+        const raise = wk * (2.5 + 0.35 * Math.sin(time * 14)), inCab = cam.mode === 2 && tr === cam.tr && wk > 0;
+        drawM(model('drvArm', driverArm), mMul(MO, MC, mRoll(ML, dx, dy - 4.6, floor + 14.5, 0.12 + (inCab ? 0 : raise))));
+        if (inCab) drawM(model('drvArm', driverArm), mMul(MO, MC, mRoll(ML, dx, dy + 4.6, floor + 14.5, -0.12 - raise)));
+        else drawM(model('drvReach', driverReach), mMul(MO, MC, mPlace(ML, dx, dy + 4.4, floor + 14, 0, 1, 1, 1)));
+        if (glows){ // headlamp, its light on the track ahead, and the fire
+          const fx = g.x + ca * (g.len / 2), fy = g.y + sa * (g.len / 2), inT = inTunnel(tr.head) && inTunnel(tr.head - g.len);
+          glowAt(fx, T + 33 * U, fy, 12 * U, [1, 0.95, 0.8], 0.9);
+          flat(GL_, fx + ca * 40 * U, fy + sa * 40 * U, T + 0.4 * U, g.a, 42 * U, 20 * U, [1 * n3 * 0.5, 0.88 * n3 * 0.5, 0.55 * n3 * 0.5, 2], shadowUV);
+          if (!inT) glowAt(g.x - ca * g.len * 0.25, T + 22 * U, g.y - sa * g.len * 0.25, 14 * U, [1, 0.6, 0.25], 0.5);
+        }
+      } else {
+        drawM(model('wag' + car.color, () => wagonModel(car.color)), MC);
+        const bob = Math.sin(time * 9 + k * 1.7) * 1.6 * U * moving, jump = car.jump > 0 ? Math.sin((1 - car.jump / 0.7) * Math.PI) * 12 * U : 0;
+        em(g.x, T + 23 * U * sc + bob + Math.max(0, jump), g.y, car.animal, 23 * U);
+      }
+    }
+    for (let k = 0; k < G.length - 1; k++){ // couplings
+      const a = at(G[k].b + 1 * U), b = at(G[k + 1].f - 1 * U), L = Math.hypot(a.x - b.x, a.y - b.y);
+      drawM(model('beam', unitModels.beam), mPlace(MO, b.x, b.y, T + 8 * U, Math.atan2(a.y - b.y, a.x - b.x), L, 2.4 * U, 2.4 * U), tint('#4a3322'));
+    }
+  }
+
+  // road vehicles (their roofs come from the moving-pictures texture)
+  gl.bindTexture(gl.TEXTURE_2D, gx.da.tex);
+  const b_ = blink();
+  vehicles.forEach((v, i) => {
+    const s = 1 + Math.sin(v.bounce * 24) * v.bounce * 0.3, h = deckH(v.x, v.y), ca = Math.cos(v.a), sa = Math.sin(v.a), L = v.half * 2 * U, S3 = VS3[v.type];
+    drawM(model('veh' + v.type + v.color, () => vehicleModel(v.type, v.color)), mPlace(MC, v.x, v.y, h, v.a, U * s, U * s, U * s), null, i < 60 && v.uv3 ? v.uv3 : [0, 0, 0, 0]);
+    flat(TR, v.x + 2 * U, v.y + 3 * U, h + 0.3 * U, v.a, L / 2 + 2 * U, (VT[v.type].wid / 2 + 3) * U, shade_, shadowUV);
+    const top = h + Math.max(...S3.segs.map(q => q[2])) * U * s, at_ = f => [v.x + ca * f * L, v.y + sa * f * L];
+    if (v.loot){ const [x, y] = at_(-0.27); em(x, top + 6 * U, y, '💰', 13 * U); }
+    if (v.rider === 'robber'){ const [x, y] = at_(v.type === 'police' ? -0.28 : 0.03); sprite(B, x, top + 7 * U, y, 21 * U, cell('robber')); }
+    if (v.rider === 'cop'){ const [x, y] = at_(0.03); em(x, top + 7 * U, y, '👮', 15 * U); }
+    if (glows){
+      for (const sd of [-1, 1]) glowAt(v.x + ca * L / 2 - sa * sd * 5 * U, h + 7 * U, v.y + sa * L / 2 + ca * sd * 5 * U, 7 * U, [1, 0.93, 0.66], 0.8);
+      flat(GL_, v.x + ca * (L / 2 + 22 * U), v.y + sa * (L / 2 + 22 * U), h + 0.4 * U, v.a, 22 * U, 12 * U, [0.45 * n3, 0.42 * n3, 0.3 * n3, 2], shadowUV);
+      glowAt(v.x - ca * L / 2, h + 7 * U, v.y - sa * L / 2, 6 * U, [1, 0.24, 0.24], 0.6);
+    }
+    if (v.siren > 0) glowAt(v.x, top + 3 * U, v.y, 26 * U, b_ ? [0.35, 0.6, 1] : [1, 0.25, 0.25], 0.9);
+    if (v.called) glowAt(v.x, top + 3 * U, v.y, 22 * U, [1, 0.7, 0], b_ ? 0.8 : 0.3);
+  });
+
+  // the level crossing's barriers, which lift up, and their flashing lights
+  if (spur){
+    const k = ease(xing.bar), warn = xing.active || xing.bar > 0.02, bl = Math.floor(time * 2.4) % 2 === 0;
+    for (const b of barriers()){
+      drawM(model('boom', boomModel), mMul(MO, mPlace(MC, b.x, b.y, 13 * U, b.a, U, U, U), mTip(ML, 0, 0, 0, (1 - k) * 1.45, 1, 1, 1)));
+      for (const [j, lit] of [[-1, warn && bl], [1, warn && !bl]]){
+        const x = b.x - Math.sin(b.a) * j * 2.6 * U - Math.cos(b.a) * 2.6 * U, y = b.y + Math.cos(b.a) * j * 2.6 * U - Math.sin(b.a) * 2.6 * U;
+        drawM(model('lamp', unitModels.lamp), mPlace(MO, x, y, 17.5 * U, b.a, 2.6 * U, 2.6 * U, 2.6 * U), lit ? [1, 0.25, 0.25, 1] : [0.36, 0.12, 0.12, 1]);
+        if (lit) glowAt(x, 17.5 * U, y, 16 * U, [1, 0.25, 0.25], 1);
+      }
+    }
+  }
+  // the building site
+  if (site){
+    const th = site.theta, SW = (u_, w_) => site.toW(u_, w_);
+    for (const p of site.piles){
+      const r = p.s * U; if (r < 0.5) continue;
+      const q = SW(p.u, p.w); drawM(model('hemi', unitModels.hemi), mPlace(MO, q.x, q.y, 0, 0, r, r, r * 0.55), tint(p.dirt ? '#8b5a2b' : '#e9c46a'));
+    }
+    if (site.bld){
+      for (const blk of build.blocks){
+        const sl = build.slots[blk.k]; if (!sl) continue;
+        const q = SW(sl.u, sl.w), sz = 10 * U * (1 - 0.04 * blk.l);
+        drawM(model('cube', unitModels.cube), mPlace(MO, q.x, q.y, (2 + blk.l * 10) * U, th, sz, sz, 10 * U), tint(blk.c));
+      }
+      if (build.done){
+        const b = site.bld, kk = Math.min(1, build.doneT / 0.5), q = SW((b.u0 + b.u1) / 2, (b.w0 + b.w1) / 2);
+        drawM(model('roof', unitModels.roof), mPlace(MO, q.x, q.y, 22 * U, th, (b.u1 - b.u0 + 6 * U) * kk, (b.w1 - b.w0 + 6 * U) * kk, 16 * U * kk), tint('#d64545'));
+        em(q.x, (44 + Math.sin(time * 3) * 2) * U, q.y, '🚩', 22 * U);
+      }
+    }
+    if (crane && gx.jib){
+      const top = SW(crane.cu, crane.cw), a = th + crane.ang, hk = craneHook(), hq = SW(hk.u, hk.w), d = crane.depth;
+      drawM(gx.jib, mPlace(MC, top.x, top.y, MH * U, a, U, U, U));
+      const hh = lerp(MH - 14, 26, d) * U;
+      drawM(model('cube', unitModels.cube), mPlace(MO, hq.x, hq.y, MH * U - 3 * U, a, 6 * U, 8 * U, 3 * U), tint('#444444'));
+      drawM(model('beam', unitModels.beam), mTip(MO, hq.x, hq.y, hh, Math.PI / 2, MH * U - 3 * U - hh, 0.6 * U, 0.6 * U), tint('#333333'));
+      drawM(model('cube', unitModels.cube), mPlace(MO, hq.x, hq.y, hh - 3 * U, a, 4 * U, 4 * U, 3 * U), tint('#333333'));
+      if (crane.carry){ const sz = 9 * U; drawM(model('cube', unitModels.cube), mPlace(MO, hq.x, hq.y, hh - 3 * U - sz, a, sz, sz, sz), tint(crane.col)); }
+      const tip = SW(crane.cu + Math.cos(crane.ang) * crane.J, crane.cw + Math.sin(crane.ang) * crane.J);
+      glowAt(tip.x, MH * U + 1.5 * U, tip.y, 12 * U, [1, 0.25, 0.25], Math.floor(time * 1.5) % 2 ? 0.9 : 0.3);
+    }
+    if (ex){
+      const q = SW(ex.u, ex.w), a = th + ex.ang, ca = Math.cos(a), sa = Math.sin(a), b = ex.boom / U;
+      drawM(model('digger', diggerModel), mPlace(MC, q.x, q.y, 0, a, U, U, U));
+      const W3 = (l, hh) => [q.x + ca * l * U, hh * U, q.y + sa * l * U];
+      const p0 = W3(6, 15), p1 = W3(6 + b * 0.5, 30), p2 = W3(6 + b - 1, 7 + ex.curl * 8);
+      for (const [A, Bp] of [[p0, p1], [p1, p2]]){
+        const L = Math.hypot(Bp[0] - A[0], Bp[1] - A[1], Bp[2] - A[2]), hz = Math.hypot(Bp[0] - A[0], Bp[2] - A[2]);
+        drawM(model('beam', unitModels.beam), mMul(MO, mPlace(MC, A[0], A[2], A[1], a, 1, 1, 1), mTip(ML, 0, 0, 0, Math.atan2(Bp[1] - A[1], hz), L, 4 * U, 3.5 * U)), tint('#d99a00'));
+      }
+      drawM(model('cube', unitModels.cube), mPlace(MO, p2[0], p2[2], p2[1] - 5 * U, a, 9 * U, 12 * U, 7 * U), tint('#666666'));
+      if (ex.load > 0.05) drawM(model('hemi', unitModels.hemi), mPlace(MO, p2[0], p2[2], p2[1] + 2 * U, 0, 4.5 * U * ex.load, 4.5 * U * ex.load, 3 * U * ex.load), tint('#8b5a2b'));
+    }
+    if (dozer){
+      const q = SW(dozer.u, dozer.w), kb = 1 + Math.sin(dozer.bounce * 24) * dozer.bounce * 0.25;
+      drawM(model('dozer', dozerModel), mPlace(MO, q.x, q.y, 0, th + dozer.a, U * kb, U * kb, U * kb));
+    }
+    for (const wk of site.workers){ const q = SW(wk.u, wk.w); em(q.x, (12 + Math.sin(time * 2 + wk.ph) * 1.5) * U, q.y, '👷', 20 * U); }
+    for (const sg of signs) if (sg.uv3){
+      const q = SW(sg.u, sg.w), lit = signLit(sg.kind), kk = 1 + Math.sin(sg.bounce * 22) * sg.bounce * 0.35 + (lit === 2 ? 0.1 + 0.08 * Math.sin(time * 8) : 0);
+      sprite(gx.signB, q.x, 22 * U + (SIGN_R + 6) * U * kk * 0.75, q.y, 1.5 * (SIGN_R + 6) * U * kk, sg.uv3);
+    }
+    if (site.cabin && glows){ const q = SW(site.cabin.u, site.cabin.w); glowAt(q.x, 12 * U, q.y, 26 * U, [1, 0.82, 0.5], 0.4); }
+  }
+  // the roadworks' roller and lamps, the washes' brushes and lights, the bank's alarm
+  if (works){
+    if (works.ph >= 14 * U){
+      const p = works.toW(works.roller, (ROAD_HALF + 9) * U + works.ph / 2), kb = 1 + Math.sin(works.bounce * 24) * works.bounce * 0.3;
+      drawM(model('roller', rollerModel), mPlace(MO, p.x, p.y, 0, works.a + (works.rdir < 0 ? Math.PI : 0), U * kb, U * kb, U * kb));
+    }
+    const on_ = Math.floor(time * 3) % 2 === 0;
+    for (const l of works.lamps){ drawM(model('lamp', unitModels.lamp), mPlace(MO, l.x, l.y, 13 * U, 0, 2.4 * U, 2.4 * U, 2.4 * U), on_ ? [1, 0.77, 0, 1] : [0.54, 0.42, 0, 1]); if (on_) glowAt(l.x, 13 * U, l.y, 16 * U, [1, 0.75, 0.15], 0.8); }
+    em(works.worker.x, (12 + Math.sin(time * 2.3) * 1.5) * U, works.worker.y, '👷', 20 * U);
+  }
+  for (const [w, hl, hw, wh, ah] of [[carWash, 36, ROAD_HALF + 9, 14, 40], [trainWash, 52, 26, 16, 60]]) if (w){
+    const c = Math.cos(w.a), s = Math.sin(w.a), P_ = (l, n) => [w.x + (c * l - s * n) * U, w.y + (s * l + c * n) * U];
+    for (const sy of [-1, 1]) for (const x of [-hl * 0.45, hl * 0.45]){
+      const [bx, by] = P_(x, sy * (hw - 10)); drawM(model('brush', unitModels.brush), mPlace(MO, bx, by, 2 * U, w.spin * sy, 3 * U, 3 * U, (wh + 12) * U));
+    }
+    const lit = w.busy > 0 && Math.floor(time * 4) % 2, [lx, ly] = P_(0, -hw - 1);
+    drawM(model('lamp', unitModels.lamp), mPlace(MO, lx, ly, (ah + 2) * U, w.a, 3.5 * U, 3.5 * U, 3.5 * U), lit ? [0.5, 0.83, 1, 1] : [0.16, 0.43, 0.62, 1]);
+    glowAt(w.x, 20 * U, w.y, 44 * U, [0.6, 0.82, 1], w.busy > 0 ? 0.45 : 0.22);
+  }
+  if (bank){
+    const on_ = bank.alarm > 0, b2 = Math.floor(time * 8) % 2 === 0, L = bank.lamp;
+    drawM(model('lamp', unitModels.lamp), mPlace(MO, L.x, L.y, 27 * U, bank.a, 4 * U, 4 * U, 4 * U), on_ ? (b2 ? [1, 0.23, 0.23, 1] : [0.23, 0.53, 1, 1]) : [0.6, 0.2, 0.2, 1]);
+    if (on_) glowAt(L.x, 27 * U, L.y, 24 * U, b2 ? [1, 0.25, 0.25] : [0.35, 0.6, 1], 1);
+    glowAt(bank.door.x, 10 * U, bank.door.y, 26 * U, [1, 0.82, 0.5], 0.4);
+  }
+  // people, animals and flowers
+  for (const st of stations){
+    const on_ = stnLit(st), b2 = Math.floor(time * 8) % 2 === 0, L = st.lamp, rgb = st.kind === 'fire' ? [1, 0.23, 0.23] : [0.23, 0.53, 1];
+    drawM(model('lamp', unitModels.lamp), mPlace(MO, L.x, L.y, (st.kind === 'police' ? 34 : 29) * U, st.a, 4 * U, 4 * U, 4 * U), on_ ? (b2 ? [...rgb, 1] : [1, 1, 1, 1]) : [rgb[0] * 0.6, rgb[1] * 0.6, rgb[2] * 0.6, 1]);
+    if (on_) glowAt(L.x, 29 * U, L.y, 24 * U, b2 ? rgb : [1, 1, 1], 1);
+    glowAt(st.door.x, 10 * U, st.door.y, 26 * U, [1, 0.82, 0.5], 0.4);
+    if (st.jail){ const k = 1 + st.jailB * 0.5; sprite(B, st.pen.x, 12 * U * k + Math.abs(Math.sin(st.jailB * 20)) * st.jailB * 6 * U, st.pen.y, 26 * U * k, cell('robber')); }
+    const cl = st.call, sp = cl && cl.spot;
+    if (sp && cl.pop > 0){
+      const s = cl.pop;
+      if (st.kind === 'fire'){
+        for (const a of [0.5, -0.5]) drawM(model('cube', unitModels.cube), mPlace(MO, sp.x, sp.y, 0, a, 18 * U * s, 4 * U * s, 3.5 * U * s), tint('#7a5230'));
+        if (cl.k > 0){ const f = (14 + 18 * cl.k) * U * s * (1 + 0.08 * Math.sin(time * 17) + 0.05 * Math.sin(time * 29)); em(sp.x, 3 * U + f * 0.55, sp.y, '🔥', f); glowAt(sp.x, 12 * U, sp.y, 40 * U, [1, 0.6, 0.25], 0.7 * cl.k); }
+      } else {
+        em(sp.x + 11 * U * s, 9 * U * s, sp.y, '🛴', 18 * U * s);
+        em(sp.x - 2 * U, 13 * U * s + (cl.k > 0 ? 0 : Math.abs(Math.sin(time * 9)) * 2 * U), sp.y, cl.k > 0 ? '🤕' : '😊', 22 * U * s);
+      }
+    }
+  }
+  for (const f of allFigs()){
+    const bob = f.walk ? Math.abs(Math.sin(time * 12)) * 2.5 * U : 0, s = f.pop * (1 + (f.bounce || 0));
+    if (f.who === 'plaster'){ sprite(B, f.x, (16 + f.lift) * U, f.y, 20 * U * s, cell('plaster')); continue; }
+    if (f.who === 'robber'){ sprite(B, f.x, 16 * U * s + bob, f.y, 36 * U * s, cell(f.bag ? 'robber' : 'robberUp')); if (f.bag) em(f.x + 11 * U * s, 10 * U * s + bob, f.y, '💰', 16 * U * s); }
+    else em(f.x, 15 * U * s + bob, f.y, f.ch || '👮', (f.size || 26) * U * s);
+  }
+  if (pond){
+    const t = time * 0.33, vx = -Math.sin(t), x = pond.x + Math.cos(t) * pond.rx * 0.5, y = pond.y + Math.sin(t * 1.3) * pond.ry * 0.35;
+    const bb = duck.flap > 0 ? 1 + Math.sin(duck.flap * 25) * 0.18 : 1;
+    sprite(B, x, 10 * U * bb, y, 30 * U * EMS * bb, cell('🦆'), null, vx > 0);
+  }
+  const nowS = performance.now() / 1000;
+  for (const f of flowers){ const k = Math.min(1, (nowS - f.born) / 0.35); em(f.nx * W, 9 * U * k, f.ny * H, f.e, 22 * U * k); }
+  if (glows){
+    for (const h of houses) glowAt(h.x - Math.sin(h.rot) * h.r * 0.95, h.r * 0.55, h.y + Math.cos(h.rot) * h.r * 0.95, 26 * U, [1, 0.77, 0.43], 0.5);
+    for (const l of station.lamps) glowAt(l.x, 33 * U, l.y, 28 * U, [1, 0.86, 0.55], 0.6);
+    for (const f of flies) glowAt(f.x + Math.sin(time * f.sp + f.ph) * 24 * U, (14 + 6 * Math.sin(time * f.sp * 0.7 + f.ph)) * U, f.y + Math.cos(time * f.sp * 1.3 + f.ph) * 18 * U, 8 * U, [0.84, 1, 0.47], 0.4 + 0.35 * Math.sin(time * 3 + f.ph));
+  }
+  // the sky: clouds by day, the moon and stars at night (far off round the edge)
+  const sR = big * 2.3, sH = big * 0.5;
+  if (n3 < 0.6) for (let i = 0; i < 7; i++){ const a = i / 7 * TAU + 0.4; em(W / 2 + Math.cos(a) * sR, sH * (0.8 + 0.3 * Math.sin(i * 2.1)), H / 2 + Math.sin(a) * sR, '☁️', big * 0.35, [1, 1, 1, 1]); }
+  if (glows){
+    for (let i = 0; i < 70; i++){ const a = i * 2.39996, r = sR * 1.4, e = 0.15 + (i * 0.618 % 1) * 0.9; glowAt(W / 2 + Math.cos(a) * r * Math.cos(e), r * Math.sin(e), H / 2 + Math.sin(a) * r * Math.cos(e), big * 0.012, [1, 0.97, 0.8], 0.6 + 0.4 * Math.sin(time * 2 + i)); }
+    if (n3 > 0.4) em(W / 2 + sR * 0.7, sH * 1.4, H / 2 - sR * 0.7, '🌙', big * 0.25, [1, 1, 1, 1]);
+  }
+  // smoke, bubbles, sparkles and the things that float up (on the map they float up the screen: here they rise)
+  const pc = n3 > 0.5 ? [0.82, 0.86, 0.96] : [1, 1, 1], disc = cell('disc');
+  for (const p of puffs) if (!p.ring){
+    if (p.oy === undefined) p.oy = p.y;
+    sprite(TR, p.x, (p.h0 === undefined ? T + 44 * U : p.h0) + (p.oy - p.y) * 1.8, p.oy, p.r * 2.2, cell('soft'), [pc[0], pc[1], pc[2], 0.75 * (1 - p.life / p.max)]);
+  }
+  for (const p of fx){
+    const a = 1 - p.life / p.max;
+    if (p.oy === undefined) p.oy = p.y;
+    if (p.t === 'dot') sprite(TR, p.x, 16 * U, p.y, p.r * 2, disc, [...tint(p.col).slice(0, 3), a]);
+    else if (p.t === 'bub') sprite(TR, p.x, 8 * U + (p.oy - p.y) * 1.4, p.oy, p.r * 2.4, cell('bubble'), [1, 1, 1, Math.min(1, a * 1.6)]);
+    else sprite(TR, p.x, 26 * U + (p.oy - p.y), p.oy, p.size * EMS, cell(p.font ? 'note:' + p.ch : p.ch), [...(p.col ? tint(p.col).slice(0, 3) : [1, 1, 1]), Math.min(1, a * 1.5)]);
+  }
+
+  // the sprites: the solid ones first, then (blended, without hiding what's behind) shadows, smoke and the like
+  gl.bindTexture(gl.TEXTURE_2D, gx.sa.tex);
+  if (gx.sa.dirty){ setTex(gx.sa.tex, gx.sa.cv, true); gx.sa.dirty = false; }
+  flush(B);
+  gl.bindTexture(gl.TEXTURE_2D, gx.da.tex); flush(gx.signB);
+  gl.bindTexture(gl.TEXTURE_2D, gx.sa.tex);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); gl.depthMask(false); gl.uniform1f(u.uCut, 0.01);
+  flush(TR);
+  if (glows){ gl.blendFunc(gl.SRC_ALPHA, gl.ONE); gl.uniform2f(u.uFogR, 1e9, 2e9); flush(GL_); }
+  else GL_.n = 0;
+  gl.depthMask(true); gl.disable(gl.BLEND);
+}
+
+return { cam, tick, draw: draw3d, set: setCam, reset, need2d: () => !on() || cam.op < 1, hillAt, deckH };
+})();
+
 /* ================= loop ================= */
 function updateCrossing(dt){
   if (!spur){ xing.active = false; xing.bar = 0; return; }
@@ -2868,7 +4346,7 @@ function update(dt){
   const s = [...trains].sort((a, b) => mod(a.head) - mod(b.head));
   for (let i = 0; i < s.length; i++){
     const tr = s[i];
-    tr.bounce = Math.max(0, tr.bounce - dt); tr.cool = Math.max(0, tr.cool - dt);
+    tr.bounce = Math.max(0, tr.bounce - dt); tr.cool = Math.max(0, tr.cool - dt); tr.wave = Math.max(0, (tr.wave || 0) - dt);
     tr.dragV *= Math.exp(-dt * 6);
     for (const car of tr.cars) car.jump = Math.max(0, car.jump - dt);
     if (tr.drag){ tr.v = 0; continue; }
@@ -2909,6 +4387,7 @@ function update(dt){
   updateVehicles(dt);
   updateTraffic(dt);
   updateRobber(dt);
+  updateStations(dt);
   updateCrossing(dt);
   updateSite(dt);
   updateWorks(dt);
@@ -3020,6 +4499,7 @@ function draw(time){
   drawSite(c, time);
   drawWorks(c, time);
   drawBankAlarm(c, time);
+  drawStations(c, time);
   for (const t of trees) drawTree(c, t);
   for (const v of vehicles) drawVehicle(c, v);
   drawFigures(c, time);
@@ -3062,6 +4542,11 @@ function draw(time){
     for (const h of houses) glow(c, h.x - Math.sin(h.rot) * h.r * 0.9, h.y + Math.cos(h.rot) * h.r * 0.9, 28 * U, '255,196,110', 0.45 * night);
     for (const l of station.lamps) glow(c, l.x, l.y, 30 * U, '255,220,140', 0.5 * night);
     if (bank){ glow(c, bank.door.x, bank.door.y, 26 * U, '255,210,130', 0.4 * night); if (bank.alarm > 0) glow(c, bank.lamp.x, bank.lamp.y, 30 * U, Math.floor(time * 8) % 2 ? '90,150,255' : '255,60,60', 0.8 * night); }
+    for (const st of stations){
+      glow(c, st.door.x, st.door.y, 26 * U, '255,210,130', 0.4 * night);
+      if (stnLit(st)) glow(c, st.lamp.x, st.lamp.y, 30 * U, Math.floor(time * 8) % 2 ? '255,255,255' : st.kind === 'fire' ? '255,60,60' : '90,150,255', 0.8 * night);
+      const cl = st.call; if (cl && cl.spot && st.kind === 'fire' && cl.k > 0) glow(c, cl.spot.x, cl.spot.y, 40 * U, '255,150,60', (0.5 + 0.15 * Math.sin(time * 13)) * cl.k * cl.pop * night);
+    }
     for (const f of flies){
       const x = f.x + Math.sin(time * f.sp + f.ph) * 24 * U, y = f.y + Math.cos(time * f.sp * 1.3 + f.ph) * 18 * U;
       glow(c, x, y, 8 * U, '215,255,120', night * (0.35 + 0.35 * Math.sin(time * 3 + f.ph)));
@@ -3094,8 +4579,9 @@ function resize(){
   W = nW; H = nH; DPR = Math.min(window.devicePixelRatio || 1, 2);
   U = clamp(Math.min(W, H) / 620, 0.5, 1.6);
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-  buildRoadLoop(); buildTrack(); buildFeatures(); buildSite(); buildYard(); buildWorks(); buildWash(); buildSides(); buildBank(); buildPond(); buildScenery(); spawnVehicles(); drawBG();
+  buildRoadLoop(); buildTrack(); buildFeatures(); buildSite(); buildYard(); buildWorks(); buildWash(); buildSides(); buildBank(); buildPond(); buildStations(); buildSpots(); buildScenery(); spawnVehicles(); drawBG();
   if (oldTL > 0) for (const tr of trains){ tr.head = mod(tr.head * TL / oldTL); computeGeo(tr); }
+  V3.cam.dirty = true; // (the 3D view rebuilds its world next time it draws)
 }
 if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
 window.addEventListener('resize', resize);
@@ -3107,7 +4593,9 @@ function frame(now){
   resize();
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
   NOW = now / 1000;
-  update(dt); draw(NOW);
+  update(dt); V3.tick(dt);
+  if (V3.need2d()) draw(NOW); // (not while the 3D view covers it)
+  V3.draw(NOW);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -3118,7 +4606,8 @@ if (window.__CHOO_DEBUG) window.__g = {
   trains, vehicles, xing, build, addTrain, trainLen, mod: x => mod(x),
   get spur(){ return spur; }, get site(){ return site; }, get crane(){ return crane; }, get ex(){ return ex; }, get U(){ return U; },
   get dozer(){ return dozer; }, get carWash(){ return carWash; }, get trainWash(){ return trainWash; }, get signs(){ return signs; }, siteRoom, dozerFits, callTruck, craneHook, exBucket, resetAll,
-  get sides(){ return sides; }, get bank(){ return bank; }, rob, traffic, startRobber, startBankRobbery, policeInLane, KEYLEN: () => KEYLEN,
+  get sides(){ return sides; }, get bank(){ return bank; }, rob, traffic, startRobber, startBankRobbery, policeInLane, get stations(){ return stations; }, get spots(){ return spots; }, startCall, tapScene, KEYLEN: () => KEYLEN,
+  cam: V3.cam, setCam: V3.set, need2d: V3.need2d, hillAt: V3.hillAt, deckH: V3.deckH,
 };
 })();
 </script>

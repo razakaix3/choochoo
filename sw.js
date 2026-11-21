@@ -3,7 +3,7 @@
 // saved copy after 2.5 s or when offline; icons and the rest come from the saved copy. Every file is saved with
 // cache: 'reload', never out of the browser's HTTP cache: GitHub Pages lets that keep a page for 10 minutes, and an
 // early version saved a stale page under a new version's name, so the iPad never saw the update.
-const CACHE = 'choochoo-a8f5967f21a1';
+const CACHE = 'choochoo-5f4eee4e4670';
 const FILES = ["./","index.html","builder.html","icons/apple-touch-icon.png","icons/icon-192.png","icons/icon-512.png","manifest.webmanifest"];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));

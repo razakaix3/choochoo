@@ -178,6 +178,7 @@ body{
         <button class="btn" id="pPond" aria-label="Duck pond">🦆</button>
       </div>
       <div class="row" id="rowSite" hidden>
+        <button class="btn mini site" id="sZone" aria-label="Building site ground: put it down, then pull its corners to make it bigger"><canvas id="csZone"></canvas></button>
         <button class="btn mini site" id="sCrane" aria-label="Tower crane"><canvas id="csCrane"></canvas></button>
         <button class="btn mini site" id="sBuild" aria-label="House being built"><canvas id="csBuild"></canvas></button>
         <button class="btn mini site" id="sDigger" aria-label="Digger"><canvas id="csDigger"></canvas></button>
@@ -364,6 +365,7 @@ function sSiren(kind){ // fire engine: slow two-tone; ambulance: quicker two-ton
 const sHonk = () => sustained([196, 247], 'sawtooth', 0.55, 0.09, 900);
 const sPutt = () => { for (let i = 0; i < 7; i++) tone(75, 'square', i * 0.1, 0.005, 0.07, 0.12); };
 const sHello = () => { tone(660, 'sine', 0, 0.01, 0.2, 0.15); tone(880, 'sine', 0.14, 0.01, 0.3, 0.15); };
+const sChug = () => tone(70, 'square', 0, 0.004, 0.06, 0.06);
 const sBlock = () => tone(330, 'triangle', 0, 0.005, 0.16, 0.22, 200);
 const sClank = () => { tone(180, 'square', 0, 0.003, 0.08, 0.06); tone(820, 'triangle', 0, 0.003, 0.35, 0.06); };
 const sRumble = () => { sNoise('lowpass', 220, 0.8, 0.45); tone(55, 'sawtooth', 0, 0.05, 0.7, 0.06); };
@@ -627,6 +629,7 @@ function blocked(N, j, gap = 29, extra){
     if (pMinD2(N.P, pr.x, pr.y, 2) < (pr.r + halfW(N) + 2) ** 2) return true;
     if (N.obs) for (const o of N.obs) if (pMinD2(o.P, pr.x, pr.y, 2) < (pr.r + o.hw + 2) ** 2) return true;
   }
+  for (const z of zones) if (pieceInZone(N, z)) return true;
   return false;
 }
 function commit(N, j){
@@ -795,7 +798,7 @@ function tapPiece(p){
   layoutChanged(true); sNo();
 }
 function defaultLayout(){ // an oval with a station on top, a level crossing and a tunnel along the bottom, and a few trees
-  pieces = []; props = []; lastEnd = null; curvePref = 1; sel.clear(); cars = cars.filter(v => !v.mine); garage = [];
+  pieces = []; props = []; zones = []; marks.length = 0; lastEnd = null; curvePref = 1; sel.clear(); cars = cars.filter(v => !v.mine); garage = [];
   const first = place('S4', { x: -144, y: -124, r: 0, f: 1 });
   lastEnd = { p: first, e: 1 };
   for (const t of ['ST', 'CB', 'CB', 'CB', 'CB', 'XR', 'TN', 'CB', 'CB', 'CB', 'CB']) extendWith(t, true);
@@ -809,6 +812,8 @@ function clearTable(){
   for (const p of pieces) sparkle(p.cx, p.cy, 4);
   for (const q of props) sparkle(q.x, q.y, 4);
   for (const v of cars) sparkle(v.x, v.y, 4);
+  for (const z of zones) sparkle((z.x0 + z.x1) / 2, (z.y0 + z.y1) / 2, 6, DIRT);
+  zones = []; marks.length = 0;
   cars = cars.filter(v => !v.mine); garage = [];
   pieces = []; props = []; lastEnd = null; pickEnd = null; sel.clear(); trains.length = 0; drags.clear(); anims.length = 0; fillQ = null;
   bar.classList.remove('drop');
@@ -830,6 +835,7 @@ function propBlocked(pr){
     if (p.obs) for (const o of p.obs) if (pMinD2(o.P, pr.x, pr.y, 2) < (pr.r + o.hw + 2) ** 2) return true;
   }
   for (const q of props) if (q !== pr && Math.hypot(q.x - pr.x, q.y - pr.y) < q.r + pr.r + 4) return true;
+  for (const z of zones) if (propVsZone(z, pr)) return true;
   return false;
 }
 function hitProp(x, y){
@@ -840,16 +846,29 @@ function hitProp(x, y){
 function placePropNear(kind){ // a tap on a scenery button: put one down somewhere free near the middle
   // A house being built goes within reach of a crane that has no house yet (and a crane next to a house
   // with no crane), so the crane gets straight to work.
+  // Site things go into a building site zone if one has room (inside the partner's zone first).
   const reach = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) < JIB - 22;
   const partner = kind === 'build' ? props.find(q => q.kind === 'crane' && !props.some(b => b.kind === 'build' && reach(q, b)))
     : kind === 'crane' ? props.find(b => b.kind === 'build' && !props.some(q => q.kind === 'crane' && reach(q, b))) : null;
-  if (partner) for (const d of [64, 72]) for (let k = 0; k < 16; k++){
-    const pr = makeProp(kind, partner.x + Math.cos(k * TAU / 16) * d, partner.y + Math.sin(k * TAU / 16) * d);
-    if (!propBlocked(pr)){ props.push(pr); layoutChanged(true); sClack(); sparkle(pr.x, pr.y, 10); return pr; }
+  const tryAt = (x, y) => { const pr = makeProp(kind, x, y); if (propBlocked(pr)) return null; props.push(pr); layoutChanged(true); sClack(); sparkle(pr.x, pr.y, 10); return pr; };
+  if (partner){
+    const pz = zoneOf(partner), spots = [];
+    for (const d of [64, 72]) for (let k = 0; k < 16; k++){ const x = partner.x + Math.cos(k * TAU / 16) * d, y = partner.y + Math.sin(k * TAU / 16) * d; spots.push([x, y, pz && inRect(pz, x, y) ? 0 : 1]); }
+    spots.sort((a, b) => a[2] - b[2]);
+    for (const [x, y] of spots){ const pr = tryAt(x, y); if (pr) return pr; }
+  }
+  if (SITE.includes(kind)){
+    const mid = z => [(z.x0 + z.x1) / 2, (z.y0 + z.y1) / 2];
+    for (const z of zones.slice().sort((a, b) => Math.hypot(mid(a)[0] - view.x, mid(a)[1] - view.y) - Math.hypot(mid(b)[0] - view.x, mid(b)[1] - view.y))){
+      const [cx, cy] = mid(z), spots = [];
+      for (let x = z.x0 + 22; x <= z.x1 - 22; x += 8) for (let y = z.y0 + 22; y <= z.y1 - 22; y += 8) spots.push([x, y, (x - cx) ** 2 + (y - cy) ** 2]);
+      spots.sort((a, b) => a[2] - b[2]);
+      for (const [x, y] of spots){ const pr = tryAt(x, y); if (pr) return pr; }
+    }
   }
   for (let ring = 0; ring < 16; ring++) for (let k = 0; k < (ring ? 12 : 1); k++){
-    const pr = makeProp(kind, view.x + Math.cos(k * TAU / 12 + ring) * ring * 45, view.y + Math.sin(k * TAU / 12 + ring) * ring * 45);
-    if (!propBlocked(pr)){ props.push(pr); layoutChanged(true); sClack(); sparkle(pr.x, pr.y, 10); return pr; }
+    const pr = tryAt(view.x + Math.cos(k * TAU / 12 + ring) * ring * 45, view.y + Math.sin(k * TAU / 12 + ring) * ring * 45);
+    if (pr) return pr;
   }
   return null;
 }
@@ -912,7 +931,9 @@ const BLOCKS = ['#e63946', '#ffbe0b', '#3a86ff', '#2a9d8f', '#fb8500', '#8338ec'
 const HUTS = ['#2d6cdf', '#2a9d8f', '#fb8500', '#d64545'];
 const JIB = 100, CJIB = 30; // the crane's jib and counter-jib
 const blink = () => Math.floor(NOW * 7) % 2 === 0;
-const turnOf = q => q.kind === 'hut' ? ((q.v >> 2) & 1) * Math.PI / 2 : q.kind === 'build' || q.kind === 'sand' ? 0 : (q.v % 8) * Math.PI / 4;
+// a bulldozer that has been driven keeps the heading it was left at (a), until a tap in build mode turns it again
+const turnOf = q => q.kind === 'hut' ? ((q.v >> 2) & 1) * Math.PI / 2 : q.kind === 'build' || q.kind === 'sand' ? 0
+  : q.kind === 'dozer' && Number.isFinite(q.a) ? q.a : (q.v % 8) * Math.PI / 4;
 function lw(q, x, y){ const a = turnOf(q), c = Math.cos(a), s = Math.sin(a); return { x: q.x + x * c - y * s, y: q.y + x * s + y * c }; } // local to world
 function siteSt(q){
   if (q.st) return q.st;
@@ -920,7 +941,8 @@ function siteSt(q){
     case 'build': return (q.st = { blocks: [], doneT: -1 });
     case 'crane': return (q.st = { ang: -0.8 + q.id, hr: 60, depth: 0, ph: 'idle', carry: null, wait: 0, turbo: 0 });
     case 'digger': return (q.st = { ang: 0, curl: 0, load: 0, ph: 'toHole', wait: 0, turbo: 0, heap: 1 });
-    case 'dozer': return (q.st = { pos: 0, dir: 1, pause: 0, turbo: 0, odo: 0 });
+    case 'dozer': return (q.st = { pos: 0, dir: 1, pause: 0, turbo: 0, odo: 0, // shuffling to and fro, and (in a zone) being driven:
+      held: 0, tx: q.x, ty: q.y, v: 0, rev: false, path: null, grid: null, planT: 0, px: 0, py: 0, backT: 0, blockT: 0, bonkT: 0, chugT: 0, beepT: 0, smokeT: 0, markD: 0, dirty: false });
     default: return (q.st = { flash: 0 });
   }
 }
@@ -994,7 +1016,10 @@ function updateSite(dt){
     const S = siteSt(q);
     if (q.kind === 'crane') updateCrane(q, dt);
     else if (q.kind === 'digger') updateDigger(q, dt);
-    else if (q.kind === 'dozer'){ // to and fro, like the roller at the roadworks
+    else if (q.kind === 'dozer'){ // driven round its zone, or else to and fro like the roller at the roadworks
+      const z = S.held || S.v || S.backT > 0 ? zoneOf(q) : null;
+      if (z){ driveDozer(q, S, z, dt); continue; }
+      S.v = 0; S.backT = 0;
       const k = S.turbo > 0 ? 3 : 1; S.turbo = Math.max(0, S.turbo - dt);
       if (S.pause > 0) S.pause -= dt;
       else {
@@ -1088,7 +1113,7 @@ function drawSite(c, q){ // everything but the crane, which is drawn over the tr
     }
     case 'dozer': {
       const L = 34, Wd = 24;
-      c.translate(S.pos, 0);
+      c.translate(S.pos + (q.wig > 0 ? Math.sin(q.wig * 40) * q.wig * 5 : 0), 0);
       c.fillStyle = 'rgba(0,0,0,0.2)'; rr(c, -L / 2 + 2, -Wd / 2 + 3, L + 5, Wd + 3, 4); c.fill();
       const tl = L * 0.84, tx = -L / 2, th = 7, cl = 4, ph = ((S.odo % cl) + cl) % cl;
       c.fillStyle = '#2b2b2b'; rr(c, tx, -Wd / 2, tl, th, 3); c.fill(); rr(c, tx, Wd / 2 - th, tl, th, 3); c.fill();
@@ -1178,6 +1203,293 @@ function drawCrane(c, q){ // drawn over the trains: the jib is high up
 function onJib(q, w){ // is w on the crane's jib (the part that swings over everything)?
   const S = siteSt(q), ux = Math.cos(S.ang), uy = Math.sin(S.ang), dx = w.x - q.x, dy = w.y - q.y, t = dx * ux + dy * uy;
   return t > -CJIB && t < JIB + 4 && Math.abs(dx * uy - dy * ux) < Math.max(10, 12 / view.z);
+}
+
+/* ---------- building site zones: fenced ground the bulldozer can drive round ---------- */
+// A zone is a fenced patch of dirt, a rectangle in world units, put down from the 🏗️ tab and stretched by its
+// corner knobs in build mode. Track, roads and scenery keep off it. The building-site things can go in it
+// (each wholly inside or wholly outside, never across the fence), and they move with it. In play mode a
+// bulldozer in a zone can be driven: drag it and it drives round things to the finger, pushing any sand
+// pile ahead of its blade (as in the town game, which this is ported from).
+const ZONE_MIN = 150, ZONE_W = 300, ZONE_H = 230, DZ_R = PROPS.dozer.r;
+const FENCES = [['#ffc400', '#2b2b2b'], ['#e63946', '#f4f4f4'], ['#c58b4f', null], ['#2d6cdf', null]];
+const DIRT = ['#8b5a2b', '#a06a35', '#b77d42'], SAND = ['#d9b25a', '#e9c46a', '#f4d58d'];
+let zones = [], zoneId = 1;
+const marks = []; // the bulldozer's track marks in the dirt
+function newZone(x, y, w = ZONE_W, h = ZONE_H, v = 0){ return { id: zoneId++, x0: Math.round(x - w / 2), y0: Math.round(y - h / 2), x1: Math.round(x - w / 2) + w, y1: Math.round(y - h / 2) + h, v }; }
+const inRect = (z, x, y) => x > z.x0 && x < z.x1 && y > z.y0 && y < z.y1;
+const edgeRoom = (z, x, y) => Math.min(x - z.x0, z.x1 - x, y - z.y0, z.y1 - y);
+const rectDist = (z, x, y) => Math.hypot(Math.max(z.x0 - x, 0, x - z.x1), Math.max(z.y0 - y, 0, y - z.y1));
+const zoneAt = (x, y) => zones.find(z => inRect(z, x, y)) || null;
+const zoneOf = q => zoneAt(q.x, q.y);
+function pathNearRect(P, z, m){
+  for (let i = 0; i < P.N; i++){ const dx = Math.max(z.x0 - P.X[i], 0, P.X[i] - z.x1), dy = Math.max(z.y0 - P.Y[i], 0, P.Y[i] - z.y1); if (dx * dx + dy * dy < m * m) return true; }
+  return false;
+}
+function pieceInZone(p, z){ // rails, road or a special piece's ground on or right by the zone
+  const b = p.bb; if (b[0] > z.x1 + 4 || b[2] < z.x0 - 4 || b[1] > z.y1 + 4 || b[3] < z.y0 - 4) return false;
+  if (pathNearRect(p.P, z, halfW(p) + 4)) return true;
+  if (p.obs) for (const o of p.obs) if (pathNearRect(o.P, z, o.hw + 4)) return true;
+  return false;
+}
+function propVsZone(z, q){ // site things wholly in or wholly out; other scenery keeps off
+  const d = rectDist(z, q.x, q.y);
+  if (!SITE.includes(q.kind)) return d < q.r + 4;
+  return d < q.r + 2 && !(d === 0 && edgeRoom(z, q.x, q.y) >= q.r + 2);
+}
+function zoneBlocked(z, self = z){
+  if (z.x0 < -TABLE || z.y0 < -TABLE || z.x1 > TABLE || z.y1 > TABLE) return true;
+  for (const o of zones) if (o !== z && o !== self && o.x0 < z.x1 + 12 && o.x1 > z.x0 - 12 && o.y0 < z.y1 + 12 && o.y1 > z.y0 - 12) return true;
+  for (const p of pieces) if (pieceInZone(p, z)) return true;
+  for (const q of props) if (propVsZone(z, q)) return true;
+  return false;
+}
+function zoneDone(z){ // a zone just put down: flowers under it go, and a bit of fuss
+  for (let i = flowers.length - 1; i >= 0; i--) if (rectDist(z, flowers[i].x, flowers[i].y) < 10) flowers.splice(i, 1);
+  layoutChanged(true); sClack(); sScoop();
+  for (const [x, y] of [[z.x0, z.y0], [z.x1, z.y0], [z.x0, z.y1], [z.x1, z.y1]]) sparkle(x, y, 5, DIRT);
+}
+function placeZoneNear(){ // a tap on the zone button: one somewhere free near the middle (smaller if need be)
+  for (const [w, h] of [[ZONE_W, ZONE_H], [230, 180], [ZONE_MIN, ZONE_MIN]]) for (let ring = 0; ring < 20; ring++) for (let k = 0; k < (ring ? 12 : 1); k++){
+    const z = newZone(view.x + Math.cos(k * TAU / 12 + ring) * ring * 45, view.y + Math.sin(k * TAU / 12 + ring) * ring * 45, w, h);
+    if (!zoneBlocked(z)){ zones.push(z); zoneDone(z); return z; }
+  }
+  return null;
+}
+const zoneCorners = z => [[z.x0, z.y0, 0, 0], [z.x1, z.y0, 1, 0], [z.x0, z.y1, 0, 1], [z.x1, z.y1, 1, 1]];
+function hitKnob(x, y){ // a zone's corner knob (build mode): { z, kx, ky } (kx = 1: the right-hand side moves)
+  const R = Math.max(20, 26 / view.z); let best = null, bd = R * R;
+  for (const z of zones) for (const [cx, cy, kx, ky] of zoneCorners(z)){ const d = (cx - x) ** 2 + (cy - y) ** 2; if (d < bd){ bd = d; best = { z, kx, ky, cx, cy }; } }
+  return best;
+}
+// Stretching a zone by a corner: it follows the finger as far as it can go (one way at a time if both won't
+// fit), never smaller than ZONE_MIN and never shrinking past the site things in it. d.bad is where the finger
+// wanted it, shown wobbling when it can't go there.
+function resizeZone(d, w){
+  const z = d.z, x = Math.round(w.x + d.gx), y = Math.round(w.y + d.gy), want = { ...z };
+  if (!d.mine) d.mine = props.filter(q => SITE.includes(q.kind) && inRect(z, q.x, q.y));
+  if (d.kx) want.x1 = Math.max(x, z.x0 + ZONE_MIN); else want.x0 = Math.min(x, z.x1 - ZONE_MIN);
+  if (d.ky) want.y1 = Math.max(y, z.y0 + ZONE_MIN); else want.y0 = Math.min(y, z.y1 - ZONE_MIN);
+  const fits = r => d.mine.every(q => edgeRoom(r, q.x, q.y) >= q.r + 2) && !zoneBlocked(r, z);
+  const part = t => ({ ...z, x0: Math.round(z.x0 + (want.x0 - z.x0) * t), y0: Math.round(z.y0 + (want.y0 - z.y0) * t), x1: Math.round(z.x1 + (want.x1 - z.x1) * t), y1: Math.round(z.y1 + (want.y1 - z.y1) * t) });
+  const ok = [want, { ...z, x0: want.x0, x1: want.x1 }, { ...z, y0: want.y0, y1: want.y1 }, ...[0.7, 0.45, 0.25, 0.1].map(part)].find(fits);
+  d.bad = ok === want ? null : want;
+  if (ok){ z.x0 = ok.x0; z.y0 = ok.y0; z.x1 = ok.x1; z.y1 = ok.y1; bgDirty = true; }
+  const k = Math.round((z.x1 - z.x0 + z.y1 - z.y0) / 24);
+  if (k !== d.k){ tone(260 + k * 14, 'triangle', 0, 0.003, 0.05, 0.08); d.k = k; }
+}
+function liftZone(z, w0){ // start carrying a zone, and the site things in it
+  zones.splice(zones.indexOf(z), 1);
+  const carry = props.filter(q => SITE.includes(q.kind) && inRect(z, q.x, q.y)).map(q => ({ q, dx: q.x - z.x0, dy: q.y - z.y0 }));
+  props = props.filter(q => !carry.some(c => c.q === q));
+  layoutChanged(false); sPick();
+  const cx = (z.x0 + z.x1) / 2, cy = (z.y0 + z.y1) / 2;
+  return { kind: 'zone', z, carry, src: { x: cx, y: cy }, gdx: cx - w0.x, gdy: cy - w0.y, moved: true };
+}
+function moveZoneTo(d, cx, cy){
+  const z = d.z, w = z.x1 - z.x0, h = z.y1 - z.y0;
+  z.x0 = Math.round(cx - w / 2); z.y0 = Math.round(cy - h / 2); z.x1 = z.x0 + w; z.y1 = z.y0 + h;
+  for (const c of d.carry){ c.q.x = z.x0 + c.dx; c.q.y = z.y0 + c.dy; }
+}
+function putZone(d){ zones.push(d.z); for (const c of d.carry) props.push(c.q); zoneDone(d.z); }
+function drawZone(c, z){
+  const w = z.x1 - z.x0, h = z.y1 - z.y0, R = mulberry(17);
+  c.save();
+  c.fillStyle = 'rgba(0,0,0,0.12)'; rr(c, z.x0 + 3, z.y0 + 4, w, h, 8); c.fill();
+  c.fillStyle = '#b99a74'; rr(c, z.x0, z.y0, w, h, 8); c.fill();
+  c.clip();
+  for (let i = 0, n = Math.round(w * h / 2600); i < n; i++){ // muddy patches
+    c.fillStyle = R() < 0.55 ? 'rgba(110,72,36,0.14)' : 'rgba(255,240,205,0.13)';
+    c.beginPath(); c.ellipse(z.x0 + R() * w, z.y0 + R() * h, 10 + R() * 28, 6 + R() * 14, R() * 3, 0, TAU); c.fill();
+  }
+  c.fillStyle = 'rgba(105,88,70,0.5)'; // stones
+  for (let i = 0, n = Math.round(w * h / 1000); i < n; i++){ circle(c, z.x0 + R() * w, z.y0 + R() * h, 0.8 + R() * 1.5); c.fill(); }
+  c.restore();
+  const [col, stripe] = FENCES[z.v % FENCES.length], m = 4, fw = w - 2 * m, fh = h - 2 * m;
+  c.lineJoin = 'round';
+  c.strokeStyle = 'rgba(0,0,0,0.2)'; c.lineWidth = 4; c.strokeRect(z.x0 + m + 1.5, z.y0 + m + 2, fw, fh);
+  c.strokeStyle = col; c.lineWidth = 3.5; c.strokeRect(z.x0 + m, z.y0 + m, fw, fh);
+  if (stripe){ c.strokeStyle = stripe; c.setLineDash([7, 7]); c.strokeRect(z.x0 + m, z.y0 + m, fw, fh); c.setLineDash([]); }
+  c.fillStyle = stripe ? '#4a4a4a' : shade(col, -0.35);
+  const P = [[z.x0 + m, z.y0 + m], [z.x1 - m, z.y0 + m], [z.x1 - m, z.y1 - m], [z.x0 + m, z.y1 - m]];
+  for (let e = 0; e < 4; e++){
+    const [ax, ay] = P[e], [bx, by] = P[(e + 1) % 4], n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / 34));
+    for (let i = 0; i < n; i++){ const x = ax + (bx - ax) * i / n, y = ay + (by - ay) * i / n; rr(c, x - 3, y - 3, 6, 6, 1.5); c.fill(); }
+  }
+}
+function drawZoneKnobs(c, z){
+  const r = Math.max(9, 13 / view.z);
+  for (const [x, y, kx, ky] of zoneCorners(z)){
+    const sx = kx ? 1 : -1, sy = ky ? 1 : -1;
+    c.fillStyle = 'rgba(0,0,0,0.2)'; circle(c, x + 1.5, y + 2, r); c.fill();
+    c.fillStyle = '#ffd23f'; circle(c, x, y, r); c.fill();
+    c.strokeStyle = '#fff'; c.lineWidth = r * 0.22; c.stroke();
+    const tx = x + sx * r * 0.45, ty = y + sy * r * 0.45; // an arrow pointing outwards
+    c.strokeStyle = '#7a5a00'; c.lineWidth = r * 0.2; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(x - sx * r * 0.4, y - sy * r * 0.4); c.lineTo(tx, ty); c.moveTo(tx - sx * r * 0.45, ty); c.lineTo(tx, ty); c.lineTo(tx, ty - sy * r * 0.45); c.stroke();
+  }
+}
+function drawMarks(c){
+  c.fillStyle = 'rgb(95,62,30)';
+  for (const m of marks){
+    const k = 1 - (NOW - m.t) / 30; if (k <= 0 || !zoneAt(m.x, m.y)) continue;
+    c.globalAlpha = 0.22 * k;
+    c.save(); c.translate(m.x, m.y); c.rotate(m.a); c.fillRect(-2, -11.5, 4, 6); c.fillRect(-2, 5.5, 4, 6); c.restore();
+  }
+  c.globalAlpha = 1;
+}
+
+// Driving: the bulldozer is two circles (radius 13, 8 either side of its middle) for things in its way, and
+// its whole prop circle keeps inside the fence, so it never ends up across it. Sand piles are pushed, not
+// driven round, unless one is jammed (q.jam) and couldn't be pushed anywhere.
+function zoneObs(z, self){ return props.filter(q => q !== self && SITE.includes(q.kind) && inRect(z, q.x, q.y)).map(q => ({ q, r: q.kind === 'dozer' ? 20 : q.r })); }
+function obsRoom(obs, x, y, who, skip){ // room around (x, y) before something in the way of who ('dz' the bulldozer, 'pl' a pushed pile)
+  let d = 1e9;
+  for (const o of obs){
+    if (o.q === skip || (who === 'dz' && o.q.kind === 'sand' && !(o.q.jam > 0))) continue;
+    d = Math.min(d, Math.hypot(x - o.q.x, y - o.q.y) - o.r);
+  }
+  return d;
+}
+function dozerFits(z, obs, x, y, a){
+  const c = Math.cos(a) * 8, s = Math.sin(a) * 8;
+  return edgeRoom(z, x, y) >= DZ_R + 2 && obsRoom(obs, x + c, y + s, 'dz') >= 13 && obsRoom(obs, x - c, y - s, 'dz') >= 13;
+}
+const pileR = q => 15 + ((q.v >> 1) & 3) * 1.5;
+const pileFits = (z, obs, p, x, y) => edgeRoom(z, x, y) >= p.r + 2 && obsRoom(obs, x, y, 'pl', p) >= p.r * 0.8;
+function pushPiles(z, obs, x, y, a){ // shove sand in front of the blade (sliding it off sideways if it's jammed); false if one can't go anywhere
+  const hx = Math.cos(a), hy = Math.sin(a), bx = x + hx * 19, by = y + hy * 19;
+  for (const o of obs){
+    const p = o.q; if (p.kind !== 'sand') continue;
+    const r = pileR(p), dx = p.x - bx, dy = p.y - by, ahead = dx * hx + dy * hy, side = -dx * hy + dy * hx;
+    if (ahead >= r * 0.85 || ahead < -r * 0.5 || Math.abs(side) > 15 + r * 0.4) continue;
+    const k = r * 0.85 - ahead, sg = side < 0 ? -1 : 1;
+    let ok = false;
+    for (const [f, s] of [[1, 0], [1, sg], [1, -sg], [0, sg], [0, -sg]]){
+      const nx = p.x + (hx * f - hy * s) * k, ny = p.y + (hy * f + hx * s) * k;
+      if (pileFits(z, obs, p, nx, ny)){ p.x = nx; p.y = ny; ok = true; break; }
+    }
+    if (!ok){ p.jam = 2.5; p.wig = 0.4; return false; }
+    if (Math.random() < 0.12) sparkle(p.x, p.y, 1, p.v % 2 ? DIRT : SAND);
+  }
+  return true;
+}
+// site.dg in the town game: a 6-unit grid of spots with room for the bulldozer. From where it is, a
+// breadth-first search finds the reachable spot nearest the finger (so a finger on the hut or outside the
+// fence brings it as close as it can get), and it aims at the furthest point along that route it can drive
+// straight to.
+const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+function dozerGrid(z, obs){
+  const G = 6, nx = Math.max(1, Math.ceil((z.x1 - z.x0) / G)), ny = Math.max(1, Math.ceil((z.y1 - z.y0) / G)), free = new Array(nx * ny);
+  for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++){
+    const x = z.x0 + (i + 0.5) * G, y = z.y0 + (j + 0.5) * G;
+    free[i * ny + j] = edgeRoom(z, x, y) >= DZ_R + 2 && obsRoom(obs, x, y, 'dz') >= 16 ? 1 : 0;
+  }
+  return { z, G, nx, ny, free };
+}
+function dozerPlan(q, D, tx, ty, obs){
+  const { z, G, nx, ny, free } = D, cx = i => z.x0 + (i + 0.5) * G, cy = j => z.y0 + (j + 0.5) * G;
+  const si = clamp(Math.floor((q.x - z.x0) / G), 0, nx - 1), sj = clamp(Math.floor((q.y - z.y0) / G), 0, ny - 1);
+  let s = si * ny + sj;
+  if (!free[s]){ // squeezed in somewhere tight: start from the nearest roomy spot
+    let bd = 1e18; s = -1;
+    for (let i = Math.max(0, si - 4); i <= Math.min(nx - 1, si + 4); i++) for (let j = Math.max(0, sj - 4); j <= Math.min(ny - 1, sj + 4); j++){
+      const k = (cx(i) - q.x) ** 2 + (cy(j) - q.y) ** 2;
+      if (free[i * ny + j] && k < bd){ bd = k; s = i * ny + j; }
+    }
+    if (s < 0) return null;
+  }
+  const prev = new Array(nx * ny).fill(-2), Q = [s];
+  prev[s] = -1;
+  let best = s, bd = 1e18;
+  for (let h = 0; h < Q.length; h++){
+    const c = Q[h], i = (c / ny) | 0, j = c % ny, k = (cx(i) - tx) ** 2 + (cy(j) - ty) ** 2;
+    if (k < bd - 1e-6){ bd = k; best = c; }
+    for (const [di, dj] of N8){
+      const a = i + di, b = j + dj;
+      if (a < 0 || b < 0 || a >= nx || b >= ny) continue;
+      const n = a * ny + b;
+      if (prev[n] !== -2 || !free[n] || (di && dj && (!free[a * ny + j] || !free[i * ny + b]))) continue;
+      prev[n] = c; Q.push(n);
+    }
+  }
+  const pts = [];
+  for (let c = best; c >= 0; c = prev[c]) pts.push({ x: cx((c / ny) | 0), y: cy(c % ny) });
+  pts.reverse();
+  if (Math.sqrt(bd) < G * 1.5 && edgeRoom(z, tx, ty) >= DZ_R + 2 && obsRoom(obs, tx, ty, 'dz') >= 13) pts.push({ x: tx, y: ty }); // right to the finger
+  return pts;
+}
+function clearRun(D, x0, y0, x1, y1){ // a straight drive with room all the way (a lookup in the grid, so it's cheap)
+  const { z, G, nx, ny, free } = D, n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 3);
+  for (let i = 1; i < n; i++){
+    const a = Math.floor((x0 + (x1 - x0) * i / n - z.x0) / G), b = Math.floor((y0 + (y1 - y0) * i / n - z.y0) / G);
+    if (a < 0 || b < 0 || a >= nx || b >= ny || !free[a * ny + b]) return false;
+  }
+  return true;
+}
+function driveDozer(q, S, z, dt){
+  if (!Number.isFinite(q.a)) q.a = turnOf(q);
+  S.bonkT = Math.max(0, S.bonkT - dt); S.backT = Math.max(0, S.backT - dt);
+  S.pos -= clamp(S.pos, -30 * dt, 30 * dt);
+  const obs = zoneObs(z, q);
+  let want = 0, turn = 0;
+  if (S.backT > 0){ S.rev = true; want = 35; } // wedged: back out a little, then try again
+  else if (S.held){
+    S.planT -= dt;
+    if (!S.path || S.planT <= 0 || Math.hypot(S.tx - S.px, S.ty - S.py) > 8){ S.grid = dozerGrid(z, obs); S.path = dozerPlan(q, S.grid, S.tx, S.ty, obs); S.planT = 0.4; S.px = S.tx; S.py = S.ty; }
+    const P = S.path;
+    if (P && P.length){
+      let near = 0, nd = 1e18; // aim as far along the route (up to 25 steps on) as there's a clear run
+      for (let i = 0; i < P.length; i++){ const k = (P[i].x - q.x) ** 2 + (P[i].y - q.y) ** 2; if (k < nd){ nd = k; near = i; } }
+      let k = Math.min(P.length - 1, near + 25);
+      while (k > near + 1 && !clearRun(S.grid, q.x, q.y, P[k].x, P[k].y)) k--;
+      const g = P[k], last = k === P.length - 1, dx = g.x - q.x, dy = g.y - q.y, dist = Math.hypot(dx, dy);
+      if (dist > (last ? 6 : 3)){
+        // tracks: turn on the spot, then drive; back up (beep beep) to a spot close behind
+        const ta = Math.atan2(dy, dx), da = angDiff(ta, q.a);
+        if (!S.rev && last && Math.abs(da) > 2.3 && dist < 90) S.rev = true;
+        else if (S.rev && (!last || Math.abs(da) < 1.9 || dist > 110)) S.rev = false;
+        const face = S.rev ? angDiff(ta + Math.PI, q.a) : da;
+        turn = clamp(face, -2.2 * dt, 2.2 * dt);
+        if (Math.abs(face) < 0.7) want = Math.min(S.rev ? 45 : 80, (last ? dist : dist + 30) * 2.5) * Math.cos(face);
+      }
+    }
+  }
+  S.v += clamp(want - S.v, -300 * dt, 150 * dt);
+  let stuck = false;
+  if (turn){ if (dozerFits(z, obs, q.x, q.y, q.a + turn)) q.a += turn; else stuck = true; }
+  const step = S.v * dt * (S.rev ? -1 : 1);
+  if (Math.abs(step) > 1e-4){
+    const nx = q.x + Math.cos(q.a) * step, ny = q.y + Math.sin(q.a) * step;
+    let mx = null, my = null;
+    if (dozerFits(z, obs, nx, ny, q.a)){ mx = nx; my = ny; }
+    else if (dozerFits(z, obs, nx, q.y, q.a)){ mx = nx; my = q.y; }
+    else if (dozerFits(z, obs, q.x, ny, q.a)){ mx = q.x; my = ny; }
+    if (mx !== null && step > 0 && !pushPiles(z, obs, mx, my, q.a)) mx = null;
+    if (mx === null){
+      S.v *= 0.3; stuck = true;
+      if (S.held && S.bonkT <= 0){ sBonk(); S.bonkT = 1.2; }
+    } else {
+      const moved = Math.hypot(mx - q.x, my - q.y);
+      S.odo += moved * Math.sign(step); q.x = mx; q.y = my; S.dirty = true;
+      if ((S.markD += moved) > 5){ S.markD = 0; marks.push({ x: q.x, y: q.y, a: q.a, t: NOW }); if (marks.length > 400) marks.shift(); }
+    }
+  }
+  if (S.held && stuck && S.backT <= 0){ S.blockT += dt; if (S.blockT > 0.5){ S.blockT = 0; S.backT = 0.6; S.path = null; } }
+  else S.blockT = Math.max(0, S.blockT - dt);
+  if (Math.abs(S.v) > 4){ // engine noises and exhaust while it moves
+    if ((S.chugT -= dt) <= 0){ sChug(); S.chugT = 0.13; }
+    if (S.rev){ if ((S.beepT -= dt) <= 0){ sBackUp(); S.beepT = 1.1; } } else S.beepT = 0;
+    if ((S.smokeT -= dt) <= 0){
+      const c = Math.cos(q.a), s = Math.sin(q.a);
+      fx.push({ t: 'dot', x: q.x + c * 4 + s * 4, y: q.y + s * 4 - c * 4, vx: rand(-8, 8), vy: rand(-25, -12), life: 0, max: 0.8, r: rand(2, 3.5), col: 'rgba(90,90,90,0.5)' });
+      S.smokeT = 0.12;
+    }
+  }
+  if (!S.held && S.backT <= 0 && Math.abs(S.v) < 0.5){ // stopped: save where it (and anything it pushed) ended up
+    S.v = 0; S.rev = false;
+    if (S.dirty){ S.dirty = false; save(); hist.dirty = true; }
+  }
 }
 
 /* ---------- moving lots of pieces at once ---------- */
@@ -1548,6 +1860,8 @@ function eraseAt(w){ // take away whatever is under the finger (his own vehicles
   if (q){ props.splice(props.indexOf(q), 1); sparkle(q.x, q.y, 10); sRub(); layoutChanged(false); return true; }
   const p = hitPiece(w.x, w.y);
   if (p){ lift(p); sparkle(p.cx, p.cy, 10); sRub(); layoutChanged(false); return true; }
+  const z = zoneAt(w.x, w.y); // the site things in a zone go first, then the ground itself
+  if (z){ zones.splice(zones.indexOf(z), 1); sparkle(w.x, w.y, 14, DIRT); sRub(); layoutChanged(false); return true; }
   return false;
 }
 
@@ -1574,12 +1888,15 @@ function recentre(){
   let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
   for (const p of pieces){ x0 = Math.min(x0, p.bb[0]); y0 = Math.min(y0, p.bb[1]); x1 = Math.max(x1, p.bb[2]); y1 = Math.max(y1, p.bb[3]); }
   for (const q of props){ x0 = Math.min(x0, q.x - q.r); y0 = Math.min(y0, q.y - q.r); x1 = Math.max(x1, q.x + q.r); y1 = Math.max(y1, q.y + q.r); }
+  for (const z of zones){ x0 = Math.min(x0, z.x0); y0 = Math.min(y0, z.y0); x1 = Math.max(x1, z.x1); y1 = Math.max(y1, z.y1); }
   if (x0 > x1) return;
   const dx = -Math.round((x0 + x1) / 2), dy = -Math.round((y0 + y1) / 2);
   if (Math.abs(dx) < 40 && Math.abs(dy) < 40) return;
   const mv = o => { o.x += dx; o.y += dy; };
   for (const p of pieces){ mv(p); if (p.link){ p.link.x1 += dx; p.link.y1 += dy; } geomPiece(p); }
-  for (const a of [props, cars, garage, puffs, fx, flowers, rings]) a.forEach(mv);
+  for (const a of [props, cars, garage, puffs, fx, flowers, rings, marks]) a.forEach(mv);
+  for (const z of zones){ z.x0 += dx; z.x1 += dx; z.y0 += dy; z.y1 += dy; }
+  for (const q of props) if (q.kind === 'dozer' && q.st){ q.st.tx += dx; q.st.ty += dy; q.st.path = null; }
   mv(view); mv(vt);
   if (pickEnd) pickEnd = pickEnd.p.ends[pickEnd.i]; // the ends were made afresh
   buildRoutes(); save(); bgDirty = true;
@@ -1606,7 +1923,8 @@ function serialize(){
   const idx = new Map(pieces.map((p, i) => [p, i])), c = [];
   pieces.forEach((p, i) => p.conn.forEach((q, e) => { if (q && idx.get(q.p) > i) c.push([i, e, idx.get(q.p), q.e]); }));
   return { v: 1, p: pieces.map(p => [p.type, r2(p.x), r2(p.y), p.r, p.f, p.flex ? [p.flex.e, r2(p.flex.dx), r2(p.flex.dy)] : 0, p.link ? [r2(p.link.x1), r2(p.link.y1), p.link.d1, r2(p.link.k0 || 0), r2(p.link.k1 || 0)] : 0]), c,
-    pr: props.map(q => [q.kind, r2(q.x), r2(q.y), q.v]),
+    pr: props.map(q => q.kind === 'dozer' && Number.isFinite(q.a) ? [q.kind, r2(q.x), r2(q.y), q.v, r2(q.a)] : [q.kind, r2(q.x), r2(q.y), q.v]),
+    zn: zones.map(z => [z.x0, z.y0, z.x1, z.y1, z.v]),
     vh: [...cars.filter(v => v.mine), ...garage].map(v => [v.type, v.color, r2(v.x), r2(v.y), r2(v.a)]) };
 }
 function deserialize(o){
@@ -1625,7 +1943,17 @@ function deserialize(o){
     if (A && B && A !== B && e >= 0 && e < A.conn.length && f >= 0 && f < B.conn.length && !A.conn[e] && !B.conn[f] && A.ends[e].net === B.ends[f].net) link(A, e, B, f);
   }
   const pl = [];
-  for (const a of Array.isArray(o.pr) ? o.pr : []) if (Array.isArray(a) && PROPS[a[0]] && Number.isFinite(a[1]) && Number.isFinite(a[2])) pl.push(makeProp(a[0], a[1], a[2], (a[3] | 0) & 7));
+  for (const a of Array.isArray(o.pr) ? o.pr : []) if (Array.isArray(a) && PROPS[a[0]] && Number.isFinite(a[1]) && Number.isFinite(a[2])){
+    const q = makeProp(a[0], a[1], a[2], (a[3] | 0) & 7);
+    if (a[0] === 'dozer' && Number.isFinite(a[4])) q.a = a[4];
+    pl.push(q);
+  }
+  const zl = [];
+  for (const a of Array.isArray(o.zn) ? o.zn.slice(0, 50) : []){
+    if (!Array.isArray(a) || ![a[0], a[1], a[2], a[3]].every(Number.isFinite) || a[2] - a[0] < 40 || a[3] - a[1] < 40) continue;
+    zl.push({ id: zoneId++, x0: a[0], y0: a[1], x1: a[2], y1: a[3], v: (a[4] | 0) & 3 });
+  }
+  zones = zl; marks.length = 0;
   const vl = [];
   for (const a of Array.isArray(o.vh) ? o.vh.slice(0, 100) : []){
     if (!Array.isArray(a) || !VT[a[0]] || !/^#[0-9a-f]{6}$/i.test(a[1]) || !Number.isFinite(a[2]) || !Number.isFinite(a[3])) continue;
@@ -1656,6 +1984,7 @@ function fitView(snap){
   let x0 = -W / zn / 2, x1 = W / zn / 2, y0 = -H / zn / 2, y1 = H / zn / 2;
   for (const p of pieces){ x0 = Math.min(x0, p.bb[0] - 24); y0 = Math.min(y0, p.bb[1] - 24); x1 = Math.max(x1, p.bb[2] + 24); y1 = Math.max(y1, p.bb[3] + 24); }
   for (const q of props){ x0 = Math.min(x0, q.x - q.r - 24); y0 = Math.min(y0, q.y - q.r - 24); x1 = Math.max(x1, q.x + q.r + 24); y1 = Math.max(y1, q.y + q.r + 24); }
+  for (const z of zones){ x0 = Math.min(x0, z.x0 - 24); y0 = Math.min(y0, z.y0 - 24); x1 = Math.max(x1, z.x1 + 24); y1 = Math.max(y1, z.y1 + 24); }
   vt.z = Math.max(zn * 0.3, Math.min(W / (x1 - x0), H / (y1 - y0)));
   vt.x = (x0 + x1) / 2; vt.y = (y0 + y1) / 2;
   if (snap){ Object.assign(view, vt); bgDirty = true; }
@@ -1831,6 +2160,7 @@ function drawBG(){
   if (bg.width !== bw || bg.height !== bh){ bg.width = bw; bg.height = bh; }
   const c = bctx; c.setTransform(DPR, 0, 0, DPR, 0, 0); c.drawImage(grass, 0, 0, W, H);
   worldTf(c);
+  for (const z of zones) drawZone(c, z);
   for (const q of props) if (q.kind === 'house' || q.kind === 'pond') drawProp(c, q);
   drawRoads(c, pieces);
   if (mode === 'build' && sel.size){ // selected pieces glow
@@ -1890,6 +2220,12 @@ function layoutTray(){
       drawProp(c, q);
     });
   }
+  pic('sZone', c => { // a little fenced site with a bulldozer and a sand pile
+    const k = m * 0.86 / 120; c.scale(k, k);
+    drawZone(c, { x0: -60, y0: -46, x1: 60, y1: 46, v: 0 });
+    drawSite(c, { ...makeProp('dozer', -18, 4, 0), st: null });
+    drawSite(c, { ...makeProp('sand', 30, 2, 2), st: null });
+  });
 }
 function addBlockQuiet(q, col){ const s = freeSlot(q); if (s) siteSt(q).blocks.push({ k: s.k, l: s.l, c: col, t: 1 }); }
 let tab = 'rail';
@@ -2634,6 +2970,14 @@ cv.addEventListener('pointerdown', e => {
       try { cv.setPointerCapture(e.pointerId); } catch (_) {}
       drags.set(e.pointerId, { kind: 'train', tr: hit.tr, k: hit.k, grab: grabOff(hit.tr, w), sx: p.x, sy: p.y, moved: false, lastT: performance.now() });
       hit.tr.drag++; hit.tr.pause = 0;
+      return;
+    }
+    // a bulldozer: the tap does its thing straight away, and a drag drives it (if it's in a building site zone)
+    const hq = !hitCar(w.x, w.y) && hitProp(w.x, w.y);
+    if (hq && hq.kind === 'dozer'){
+      try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+      drags.set(e.pointerId, { kind: 'drive', q: hq, sx: p.x, sy: p.y, moved: false });
+      tapPropPlay(hq, w);
     } else tapScene(w);
     return;
   }
@@ -2645,12 +2989,16 @@ cv.addEventListener('pointerdown', e => {
     if (!eraseAt(w)){ sPop(); sparkle(w.x, w.y, 4); }
     return;
   }
-  const E = hitEnd(w.x, w.y), hv = !E && tool !== 'morph' && hitCar(w.x, w.y);
+  const E = hitEnd(w.x, w.y), hk = !E && hitKnob(w.x, w.y);
+  if (hk){ drags.set(e.pointerId, { kind: 'zsize', z: hk.z, kx: hk.kx, ky: hk.ky, gx: hk.cx - w.x, gy: hk.cy - w.y, sx: p.x, sy: p.y, moved: false, bad: null }); return; }
+  const hv = !E && tool !== 'morph' && hitCar(w.x, w.y);
   if (hv){ drags.set(e.pointerId, { kind: 'vpend', car: hv, sx: p.x, sy: p.y }); return; }
   const hp = E ? E.p : hitPiece(w.x, w.y);
   if (hp){ drags.set(e.pointerId, { kind: 'pend', piece: hp, end: E, sx: p.x, sy: p.y, t0: NOW, long: false }); return; }
   const hq = hitProp(w.x, w.y);
   if (hq){ drags.set(e.pointerId, { kind: 'ppend', prop: hq, sx: p.x, sy: p.y }); return; }
+  const hz = zoneAt(w.x, w.y);
+  if (hz){ drags.set(e.pointerId, { kind: 'zpend', z: hz, sx: p.x, sy: p.y }); return; }
   if (ht){ tapTrain(ht); return; }
   drags.set(e.pointerId, { kind: 'rect', sx: p.x, sy: p.y, x: p.x, y: p.y });
 });
@@ -2669,6 +3017,7 @@ function movePiece(d, p){
   const w = toW(p.x, p.y);
   d.wx = w.x + d.gdx; d.wy = w.y + d.gdy;
   if (d.kind === 'prop'){ d.prop.x = d.wx; d.prop.y = d.wy; d.ok = !d.over && !propBlocked(d.prop); }
+  else if (d.kind === 'zone'){ moveZoneTo(d, d.wx, d.wy); d.ok = !d.over && !zoneBlocked(d.z); }
   else if (d.kind === 'veh'){ // snaps onto the lane nearest the finger, if there's room
     const sp = d.over ? null : freeSpot(d.car, d.wx, d.wy, 34, cars.filter(c => c.mine));
     d.spot = sp && roomFor(sp.l.p.rcomp, d.car) ? sp : null; d.ok = !!d.spot;
@@ -2676,7 +3025,7 @@ function movePiece(d, p){
   else d.cur = d.over ? null : d.kind === 'group' ? bestGroupPose(d.st, 0, d.wx, d.wy) : bestPose(d.type, d.f, d.r, d.wx, d.wy);
   refreshBarGlow();
 }
-function refreshBarGlow(){ let on = false; for (const d of drags.values()) if ((d.kind === 'piece' || d.kind === 'group' || d.kind === 'prop' || d.kind === 'veh') && d.moved && d.over) on = true; bar.classList.toggle('drop', on); }
+function refreshBarGlow(){ let on = false; for (const d of drags.values()) if ((d.kind === 'piece' || d.kind === 'group' || d.kind === 'prop' || d.kind === 'zone' || d.kind === 'veh') && d.moved && d.over) on = true; bar.classList.toggle('drop', on); }
 function restore(d){ // a moved piece that can't go where it was dropped goes back where it came from
   if (!place(d.type, d.src, d.id)){ const N = newPiece(d.type, d.src, d.id); commit(N, findJoins(N)); }
   layoutChanged(true);
@@ -2710,6 +3059,17 @@ function dropProp(d, p){
   if (d.ok){ props.push(d.prop); layoutChanged(true); sClack(); sparkle(d.prop.x, d.prop.y, 10); return; }
   sNo(); if (d.btn) shakeBtn(d.btn);
   if (d.src){ d.prop.x = d.src.x; d.prop.y = d.src.y; props.push(d.prop); layoutChanged(true); }
+}
+// A building site zone: a tap in the tray puts one somewhere free; dragged, it goes where it's dropped. A zone
+// that's moved takes its site things with it (and puts them away with it on the bar).
+function dropZone(d, p){
+  if (d.btn) d.btn.classList.remove('pressed');
+  if (!d.moved){ if (!placeZoneNear()){ sNo(); shakeBtn(d.btn); } return; }
+  movePiece(d, p);
+  if (d.over){ if (d.src){ sPutAway(); sparkle(d.wx, d.wy, 12, DIRT); layoutChanged(true); } else sPop(); return; }
+  if (d.ok){ putZone(d); return; }
+  sNo(); if (d.btn) shakeBtn(d.btn);
+  if (d.src){ moveZoneTo(d, d.src.x, d.src.y); putZone(d); }
 }
 // A vehicle: a tap in the tray puts one on a road; dragged, it goes on the lane it's dropped on (and so
 // that way round). A vehicle that can't go where it was dropped goes back where it came from.
@@ -2749,6 +3109,9 @@ function cancelDrag(d){
   if (d.kind === 'train') d.tr.drag = 0;
   if (d.kind === 'piece'){ if (d.btn) d.btn.classList.remove('pressed'); if (d.src) restore(d); }
   if (d.kind === 'prop'){ if (d.btn) d.btn.classList.remove('pressed'); if (d.src){ d.prop.x = d.src.x; d.prop.y = d.src.y; props.push(d.prop); layoutChanged(true); } }
+  if (d.kind === 'zone'){ if (d.btn) d.btn.classList.remove('pressed'); if (d.src){ moveZoneTo(d, d.src.x, d.src.y); putZone(d); } }
+  if (d.kind === 'zsize' && d.moved) layoutChanged(true);
+  if (d.kind === 'drive' && d.moved && !d.dead){ const S = siteSt(d.q); S.held = Math.max(0, S.held - 1); }
   if (d.kind === 'group') restoreGroup(d.st);
   if (d.kind === 'veh'){ if (d.btn) d.btn.classList.remove('pressed'); if (d.src) putBackCar(d); }
   if (d.kind === 'bend' && d.st) restoreGroup(d.st, false);
@@ -2783,6 +3146,22 @@ function onMove(e){
       const nd = { kind: 'prop', prop: q, src: { x: q.x, y: q.y }, gdx: q.x - w0.x, gdy: q.y - w0.y, moved: true };
       drags.set(e.pointerId, nd); movePiece(nd, p);
     }
+  } else if (d.kind === 'drive'){
+    if (!props.includes(d.q)){ drags.delete(e.pointerId); return; }
+    if (!d.moved){
+      if (Math.hypot(p.x - d.sx, p.y - d.sy) < 9) return;
+      d.moved = true;
+      if (!zoneOf(d.q)){ d.dead = true; d.q.wig = 0.6; sNo(); return; } // only in a building site
+      siteSt(d.q).held++;
+    }
+    if (!d.dead){ const S = siteSt(d.q); S.tx = w.x; S.ty = w.y; }
+  } else if (d.kind === 'zsize'){
+    if (!zones.includes(d.z)){ drags.delete(e.pointerId); return; }
+    if (!d.moved){ if (Math.hypot(p.x - d.sx, p.y - d.sy) < 6) return; d.moved = true; sPick(); }
+    resizeZone(d, w);
+  } else if (d.kind === 'zpend'){
+    if (!zones.includes(d.z)){ drags.delete(e.pointerId); return; }
+    if (Math.hypot(p.x - d.sx, p.y - d.sy) > 9){ const nd = liftZone(d.z, toW(d.sx, d.sy)); drags.set(e.pointerId, nd); movePiece(nd, p); }
   } else if (d.kind === 'vpend'){
     if (!cars.includes(d.car)){ drags.delete(e.pointerId); return; }
     if (Math.hypot(p.x - d.sx, p.y - d.sy) > 9){ // pick it up (a plain car becomes one of his)
@@ -2817,7 +3196,18 @@ function onUp(e){
   }
   else if (d.kind === 'vpend'){ if (cars.includes(d.car)) tapCarBuild(d.car); }
   else if (d.kind === 'veh') dropVeh(d, localPt(e));
-  else if (d.kind === 'ppend'){ if (!props.includes(d.prop)) return; d.prop.v = (d.prop.v + 1) % 8; sClick(); sparkle(d.prop.x, d.prop.y, 6); layoutChanged(false); }
+  else if (d.kind === 'ppend'){
+    const q = d.prop; if (!props.includes(q)) return;
+    if (Number.isFinite(q.a)){ q.v = (Math.round(q.a / (Math.PI / 4)) % 8 + 8) % 8; q.a = undefined; } // a driven bulldozer turns on from its nearest 45° step
+    q.v = (q.v + 1) % 8; sClick(); sparkle(q.x, q.y, 6); layoutChanged(false);
+  }
+  else if (d.kind === 'drive'){ if (d.moved && !d.dead){ const S = siteSt(d.q); S.held = Math.max(0, S.held - 1); } }
+  else if (d.kind === 'zsize'){
+    bgDirty = true;
+    if (d.moved){ layoutChanged(true); sClack(); for (const [x, y] of zoneCorners(d.z)) sparkle(x, y, 4, DIRT); } else { sPop(); sparkle(d.kx ? d.z.x1 : d.z.x0, d.ky ? d.z.y1 : d.z.y0, 4); }
+  }
+  else if (d.kind === 'zpend'){ if (!zones.includes(d.z)) return; d.z.v = (d.z.v + 1) % FENCES.length; sClick(); sparkle(toW(d.sx, d.sy).x, toW(d.sx, d.sy).y, 8, DIRT); layoutChanged(false); }
+  else if (d.kind === 'zone') dropZone(d, localPt(e));
   else if (d.kind === 'erase') layoutChanged(true);
   else if (d.kind === 'rect') finishRect(d);
   else if (d.kind === 'bend'){ d.w = toW(localPt(e).x, localPt(e).y); commitBend(d); }
@@ -2849,6 +3239,7 @@ function tapScene(w){
     else { sClack(); sparkle(w.x, w.y, 10); }
     return;
   }
+  if (zoneAt(w.x, w.y)){ sScoop(); sparkle(w.x, w.y, 10, DIRT); return; } // building site ground: a puff of dirt
   sPop(); sparkle(w.x, w.y, 8);
   flowers.push({ x: w.x, y: w.y, e: pick(FLOWERS), born: performance.now() / 1000 });
   if (flowers.length > 70) flowers.shift();
@@ -2930,8 +3321,8 @@ for (const t of ['pointerup', 'pointercancel', 'pointerleave']) bClear.addEventL
 // Tray: drag a piece or scenery onto the table, or just tap it (a piece goes on the end of the track or
 // road, scenery somewhere free).
 const TRAY = { tS1: 'S1', tS2: 'S2', tS3: 'S3', tS4: 'S4', tCS: 'CS', tCB: 'CB', tST: 'ST', tTN: 'TN', tXR: 'XR', tXR2: 'XR', tXD: 'XD', tXD2: 'XD', tR2: 'R2', tR4: 'R4', tRC: 'RC', tRT: 'RT', tRY: 'RY' };
-for (const id of [...Object.keys(TRAY), ...Object.keys(PTRAY), ...Object.keys(VTRAY)]){
-  const b = $(id), t = TRAY[id], pk = PTRAY[id], vk = VTRAY[id];
+for (const id of [...Object.keys(TRAY), ...Object.keys(PTRAY), ...Object.keys(VTRAY), 'sZone']){
+  const b = $(id), t = TRAY[id], pk = PTRAY[id], vk = VTRAY[id], zk = id === 'sZone';
   b.addEventListener('pointerdown', e => {
     e.preventDefault(); e.stopPropagation(); audio();
     if (mode !== 'build') return;
@@ -2940,6 +3331,7 @@ for (const id of [...Object.keys(TRAY), ...Object.keys(PTRAY), ...Object.keys(VT
     const p = localPt(e);
     if (vk) drags.set(e.pointerId, { kind: 'veh', car: makeCar(vk, null, true), src: null, gdx: 0, gdy: -40 / view.z, btn: b, sx: p.x, sy: p.y, moved: false, ok: false });
     else if (pk) drags.set(e.pointerId, { kind: 'prop', prop: makeProp(pk, 0, 0), src: null, gdx: 0, gdy: -40 / view.z, btn: b, sx: p.x, sy: p.y, moved: false, ok: false });
+    else if (zk) drags.set(e.pointerId, { kind: 'zone', z: newZone(0, 0), carry: [], src: null, gdx: 0, gdy: -40 / view.z, btn: b, sx: p.x, sy: p.y, moved: false, ok: false });
     else drags.set(e.pointerId, { kind: 'piece', type: t, net: /2$/.test(id) && PT[t].kind ? 'road' : netOf(t), f: PT[t].curve ? curvePref : 1, r: 0, src: null, id: 0, gdx: 0, gdy: -40 / view.z, btn: b, sx: p.x, sy: p.y, moved: false, cur: null });
   });
   b.addEventListener('pointermove', onMove);
@@ -2948,7 +3340,7 @@ for (const id of [...Object.keys(TRAY), ...Object.keys(PTRAY), ...Object.keys(VT
   b.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault(); audio();
-    if (!(vk ? addVehicle(vk) : pk ? placePropNear(pk) : extendWith(t, false, /2$/.test(id) && PT[t].kind ? 'road' : netOf(t)))){ sNo(); shakeBtn(b); }
+    if (!(vk ? addVehicle(vk) : pk ? placePropNear(pk) : zk ? placeZoneNear() : extendWith(t, false, /2$/.test(id) && PT[t].kind ? 'road' : netOf(t)))){ sNo(); shakeBtn(b); }
   });
   b.addEventListener('click', e => e.preventDefault());
 }
@@ -3103,8 +3495,9 @@ function update(dt){
   }
   updateCars(dt);
   updateCrossings(dt);
-  for (const q of props){ q.wig = Math.max(0, q.wig - dt); q.flap = Math.max(0, q.flap - dt); }
+  for (const q of props){ q.wig = Math.max(0, q.wig - dt); q.flap = Math.max(0, q.flap - dt); if (q.jam > 0) q.jam -= dt; }
   updateSite(dt);
+  while (marks.length && NOW - marks[0].t > 30) marks.shift();
   if (clearHold && NOW - clearHold > 1.2){ clearHold = 0; bClear.classList.remove('hold'); clearTable(); }
   for (let i = puffs.length - 1; i >= 0; i--){
     const p = puffs[i]; p.life += dt;
@@ -3149,13 +3542,14 @@ function draw(time){
     const k = Math.min(1, (now - f.born) / 0.35), s = k < 1 ? 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2) : 1;
     c.font = `${Math.max(1, Math.round(22 * s))}px ${EF}`; c.fillText(f.e, f.x, f.y);
   }
+  if (marks.length) drawMarks(c);
   for (const q of props) if (SITE.includes(q.kind) && q.kind !== 'crane') drawSite(c, q);
   for (const a of anims){ // a track sliding over to join another
     const k = ease(a.t / a.dur), g = a.st.gc, dr = a.pose.dr > 4 ? a.pose.dr - 8 : a.pose.dr;
     c.save(); c.translate(g.x + a.pose.dx * k, g.y + a.pose.dy * k); c.rotate(dr * k * Math.PI / 4); c.translate(-g.x, -g.y);
     drawSet(c, a.st.group, true); c.restore();
   }
-  if (building) drawEnds(c, time);
+  if (building){ drawEnds(c, time); for (const z of zones) drawZoneKnobs(c, z); }
   for (const q of props) if (q.kind === 'tree') drawTree(c, q);
   for (const car of cars) drawVehicle(c, car);
   c.globalAlpha = building ? 0.5 : 1;
@@ -3183,8 +3577,21 @@ function draw(time){
     drawSet(c, d.plan.map(s => s.N), false);
     c.restore();
   }
-  for (const d of drags.values()){ // pieces, scenery and vehicles being carried
+  for (const d of drags.values()){ // pieces, scenery, vehicles and site zones being carried
+    if (d.kind === 'zsize' && d.bad){ // a zone stretched where it can't go: the shape it wanted, wobbling
+      c.save(); c.translate(Math.sin(time * 30) * 2.5, 0);
+      c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 3; c.setLineDash([8, 8]);
+      c.strokeRect(d.bad.x0, d.bad.y0, d.bad.x1 - d.bad.x0, d.bad.y1 - d.bad.y0); c.restore();
+      continue;
+    }
     if (!d.moved || d.over) continue;
+    if (d.kind === 'zone'){
+      if (d.wx === undefined) continue;
+      c.save();
+      if (d.ok) c.globalAlpha = 0.92; else { c.globalAlpha = 0.45; c.translate(Math.sin(time * 30) * 2.5, 0); }
+      drawZone(c, d.z); for (const cq of d.carry) drawProp(c, cq.q);
+      c.restore(); continue;
+    }
     if (d.kind === 'veh'){ // on the lane it will go on, or wobbling where it can't go
       if (d.wx === undefined) continue;
       const q = d.spot && pAt(d.spot.l.P, d.spot.s);
@@ -3289,6 +3696,7 @@ if (window.__CHOO_DEBUG) window.__g = {
   liftSet, groupEval, commitGroup, restoreGroup, selectComponent, connectEnds, planFill, deleteSel, eraseAt,
   roadLink, leadOuts, recentre, bendPlan, startBend, startPull, commitBend, mergeRoad, linkRoad, JUNCS, replaceTarget, replaceEval, doReplace, undoRedo, histTick,
   makeProp, propBlocked, placePropNear, blocked, newPiece, findJoins,
+  get zones(){ return zones; }, marks, newZone, zoneBlocked, placeZoneNear, zoneOf, zoneAt, dozerFits, zoneObs, dozerGrid, dozerPlan, pileFits, hitKnob,
   serialize, deserialize, defaultLayout, clearTable, TYPES, SPECIALS, ROADS, STOP_C,
   get garage(){ return garage; }, VT, SITE, addVehicle, freeSpot, roomFor, putCar, makeCar, hitCar, siteSt, addBlock, freeSlot, craneBuild, tapPropPlay, update,
 };
