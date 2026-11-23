@@ -102,7 +102,7 @@ body{
     <canvas id="c3" hidden aria-label="Riding along with a train and its driver. Tap to toot, drag to look round."></canvas>
     <div id="parent">
       <button class="pbtn" id="bReset" aria-label="Put everything back to the start (press and hold)">🔄</button>
-      <button class="pbtn" id="bBed" aria-label="Play timer: press and hold to change it, or to wake up">⏰10</button>
+      <button class="pbtn" id="bBed" aria-label="Play timer: press and hold, then enter the grown-up code to change it or to wake up">⏰10</button>
       <button class="pbtn" id="bBell" aria-label="Crossing bell on or off">🔔</button>
       <button class="pbtn" id="bMute" aria-label="All sound on or off">🔊</button>
       <button class="pbtn" id="bFull" aria-label="Full screen" hidden>⛶</button>
@@ -2820,8 +2820,8 @@ if (document.fullscreenEnabled && !homeApp){
 // A play timer the parent sets (10 minutes to start with), so the game ends itself instead of being taken away.
 // It winds down gently: a soft chime a minute before, then night falls, a lullaby plays, everything stops, and a
 // sleepy night-time cover (a moon, twinkling stars, 💤) fades in over the whole game. Taps do nothing then.
-// ⏰ in the parent corner (press and hold 1.2 s) steps the time through 10, 20 and 30 minutes and off, and wakes
-// everything up again once it's asleep. Only time with the game on screen counts. It's saved with the setting and
+// ⏰ in the parent corner (press and hold 1.2 s, then the code 1234) sets the time to 10, 20 or 30 minutes or off,
+// and wakes everything up again once it's asleep. Only time with the game on screen counts. It's saved with the setting and
 // shared with the other game (the home-screen app can switch between them), and starts afresh after a 20-minute break.
 // (The same block is in index.html and builder.html.)
 const BED_KEY = 'choochoo-bedtime-v1', BED_OPTS = [10, 20, 30, 0], BED_BREAK = 20 * 60 * 1000;
@@ -2845,16 +2845,18 @@ function wakeUp(){
   sleepEl.classList.remove('show', 'on');
   nightT = 0; $('bSky').textContent = '🌙'; going = true; setLight(); sDay();
 }
-function nextBedtime(){
-  bed.min = BED_OPTS[(BED_OPTS.indexOf(bed.min) + 1) % BED_OPTS.length]; bed.used = 0; bed.warned = false;
-  bedLabel(); bedSave(); tone(bed.min ? 440 + bed.min * 20 : 330, 'sine', 0, 0.01, 0.3, 0.15);
+// the grown-up picked a time (after the code): a fresh start with that much play, and awake again if it was asleep
+function setBedtime(m){
+  bed.min = m; bed.used = 0; bed.warned = false;
+  bedLabel(); if (bed.asleep) wakeUp(); else bedSave();
+  tone(bed.min ? 440 + bed.min * 20 : 330, 'sine', 0, 0.01, 0.3, 0.15);
 }
 // first thing every frame: true once it's asleep and everything has stopped (the rest of the update is skipped)
 function bedTick(dt){
   const now = Date.now();
   if (now - bed.wall > BED_BREAK){ bed.used = 0; bed.warned = false; if (bed.asleep) wakeUp(); } // back after a long break
   bed.wall = now;
-  if (bed.hold && NOW - bed.hold > 1.2){ bed.hold = 0; bBed.classList.remove('hold'); bed.asleep ? wakeUp() : nextBedtime(); }
+  if (bed.hold && NOW - bed.hold > 1.2){ bed.hold = 0; bBed.classList.remove('hold'); pin.open(); }
   if (bed.asleep){
     bed.t += dt;
     if (bed.t > 2.5) sleepEl.classList.add('on');
@@ -2871,6 +2873,83 @@ function bedTick(dt){
 bBed.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); audio(); bed.hold = NOW || 1e-3; bBed.classList.add('hold'); });
 for (const t of ['pointerup', 'pointercancel', 'pointerleave']) bBed.addEventListener(t, () => { bed.hold = 0; bBed.classList.remove('hold'); });
 window.addEventListener('pagehide', bedSave);
+// The parent's code (1234): holding ⏰ used to change the time, or wake it up, straight away, and he soon found
+// that out. Now holding it opens a number pad; the right code opens the choice of times, and picking one starts
+// afresh with that much play (and wakes everything up, if it's asleep). A wrong code shakes and clears. The pad
+// goes away on its own after 30 s with nothing pressed.
+const BED_PIN = '1234';
+const pin = (() => {
+  const css = document.createElement('style');
+  css.textContent = `
+#pin{ position:fixed; inset:0; z-index:5; display:none; place-items:center; background:rgba(10,16,48,.72); touch-action:none; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+#pin.show{ display:grid; }
+#pin .box{ position:relative; background:#fff; border-radius:22px; padding:18px 18px 16px; box-shadow:0 10px 40px rgba(0,0,0,.4); text-align:center; color:#2b2b2b; max-width:calc(100vw - 32px); }
+#pin .ttl{ font-size:17px; font-weight:600; margin:2px 30px 10px; }
+#pin .dots{ display:flex; gap:12px; justify-content:center; margin:0 0 14px; }
+#pin .dots i{ width:14px; height:14px; border-radius:50%; border:2px solid #8a8fa0; }
+#pin .dots i.on{ background:#3a86ff; border-color:#3a86ff; }
+#pin .keys{ display:grid; grid-template-columns:repeat(3, min(64px,17vw)); gap:10px; justify-content:center; }
+#pin .times{ display:grid; grid-template-columns:repeat(2, min(110px,36vw)); gap:12px; justify-content:center; }
+#pin button{ font:inherit; border:none; border-radius:14px; background:#eef1f6; color:#2b2b2b; cursor:pointer; touch-action:none; }
+#pin .keys button{ height:min(56px,13vh); font-size:24px; font-weight:600; }
+#pin .times button{ height:min(64px,15vh); font-size:20px; white-space:nowrap; font-weight:600; }
+#pin .times button.cur{ background:#3a86ff; color:#fff; }
+#pin button:active{ background:#d6dbe5; }
+#pin .x{ position:absolute; top:8px; right:8px; width:36px; height:36px; font-size:18px; background:transparent; }
+#pin .box.shake{ animation:shake .35s ease; }
+#pin [hidden]{ display:none; }
+`;
+  document.head.appendChild(css);
+  const el = document.createElement('div'); el.id = 'pin'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', "Grown-ups: the play timer");
+  el.innerHTML = `<div class="box"><button class="x" aria-label="Close">✕</button><div class="ttl"></div>
+<div class="enter"><div class="dots"><i></i><i></i><i></i><i></i></div><div class="keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button data-k="${n}">${n}</button>`).join('')}<span></span><button data-k="0">0</button><button data-k="del" aria-label="Delete">⌫</button></div></div>
+<div class="times" hidden>${BED_OPTS.map(m => `<button data-m="${m}">${m ? m + ' min' : '∞ no limit'}</button>`).join('')}</div></div>`;
+  document.body.appendChild(el);
+  const box = el.querySelector('.box'), ttl = el.querySelector('.ttl'), enter = el.querySelector('.enter'), times = el.querySelector('.times'), dots = [...el.querySelectorAll('.dots i')];
+  let code = '', idle = 0;
+  const showDots = () => dots.forEach((d, i) => d.classList.toggle('on', i < code.length));
+  function open(){
+    code = ''; showDots(); enter.hidden = false; times.hidden = true;
+    ttl.textContent = "Grown-ups: enter the code"; el.classList.add('show'); poke();
+  }
+  function close(){ el.classList.remove('show'); clearTimeout(idle); }
+  function poke(){ clearTimeout(idle); idle = setTimeout(close, 30000); }
+  function key(k){
+    poke();
+    if (k === 'del'){ code = code.slice(0, -1); showDots(); return; }
+    if (code.length >= 4) return;
+    code += k; showDots(); tone(520 + code.length * 60, 'sine', 0, 0.005, 0.08, 0.06);
+    if (code.length < 4) return;
+    if (code === BED_PIN){
+      setTimeout(() => {
+        enter.hidden = true; times.hidden = false;
+        ttl.textContent = bed.asleep ? "Wake up, and play for…" : "Play for…";
+        for (const b of times.children) b.classList.toggle('cur', +b.dataset.m === bed.min);
+      }, 150);
+    } else {
+      sNo(); box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+      setTimeout(() => { code = ''; showDots(); }, 350);
+    }
+  }
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault(); e.stopPropagation(); audio();
+    const b = e.target.closest('button');
+    if (!b){ if (e.target === el) close(); return; }
+    if (b.classList.contains('x')){ close(); return; }
+    if (b.dataset.k) key(b.dataset.k);
+    else if (b.dataset.m !== undefined){ close(); setBedtime(+b.dataset.m); }
+  });
+  for (const t of ['pointerup', 'click', 'touchstart', 'touchend']) el.addEventListener(t, e => e.stopPropagation());
+  window.addEventListener('keydown', e => {
+    if (!el.classList.contains('show')) return;
+    if (e.key === 'Escape') close();
+    else if (!enter.hidden && /^[0-9]$/.test(e.key)) key(e.key);
+    else if (!enter.hidden && e.key === 'Backspace') key('del');
+    else return;
+    e.preventDefault(); e.stopPropagation();
+  }, true);
+  return { open, close, get isOpen(){ return el.classList.contains('show'); } };
+})();
 try { // carry on from the other game (or from a moment ago), unless it's been a long break
   const st = JSON.parse(window.localStorage.getItem(BED_KEY) || 'null');
   if (st){
